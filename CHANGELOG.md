@@ -4,6 +4,28 @@
 `git log`（每条说明都写得比较长），已知的坑看 [`docs/pitfalls.md`](./docs/pitfalls.md)
 与 [`docs/windows.md`](./docs/windows.md)。
 
+## [0.4.0] — 2026-10-18
+
+### 变更
+
+**两套预设改为随插件本体注册（升级后少一步安装）**
+
+- 以前：装完插件还要单独装预设（0.1.x 拷目录 / 0.2.0+ 手动贴声明）。漏了这一步不会报错，
+  只是模式选择器里没有「纯文本对话模式」「昔涟工作模式」。
+- 现在：预设声明并入包自带的 `cordis.patch.yml`，`dsh plugin add dsh-cyrene` 之后
+  重启 DSH，新建对话就能直接选两个模式。原来单独的预设声明 bundle
+  （`dsh-cyrene-presets`）已经合并进来，不用再装。
+- ⚠️ 运行在 DSH 0.2.0 之前？这个版本用不了（声明式预设注册表是 0.2.0 引入的），
+  继续用 0.3.1。
+
+**仓库**：维护者镜像到 `YOGEMOW/DSH-Cyrene`；原仓库 `Cyrene-xl/DSH-Cyrene` 保留为
+`upstream`，方便继续同步上游更新。
+
+### 维护
+
+- 新增 `scripts/build-bundle-patch.mjs` 生成 `cordis.patch.yml`（预设段是生成内容，
+  改 `preset/` 后要重新生成）；`tests/preset.test.mjs` 增加 `--check` 断言防漂移。
+
 ## [0.3.1] — 2026-10-06
 
 ### 修复

@@ -239,6 +239,15 @@ test('声明导出：0.2.0 的声明里 plugins 必须与原组合逐字相等',
   }
 });
 
+test('bundle 补丁：cordis.patch.yml 必须与 preset/ 源同步', () => {
+  // 0.4.0 起预设声明并进 cordis.patch.yml，由 scripts/build-bundle-patch.mjs 生成。
+  // 手改补丁、或改完 preset/ 忘了重新生成，都会让装出来的模式静默使用旧人设 ——
+  // 所以这里把"生成结果 == 仓库里的补丁"变成可检查的事实。
+  execFileSync(process.execPath, [join(repoRoot, 'scripts', 'build-bundle-patch.mjs'), '--check'], {
+    encoding: 'utf8',
+  });
+});
+
 test('发版：三处版本号必须一致，且 CHANGELOG 里有对应条目', () => {
   // 这条不是形式主义：版本号散在三个清单文件里，**漏改一个不会报错**，
   // 只会让某一部分使用者看到旧号（上次被评审抓到的就是这个）。

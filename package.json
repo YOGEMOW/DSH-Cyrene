@@ -1,19 +1,29 @@
 {
   "name": "dsh-cyrene",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "description": "DeepSeek Harness 插件：增加「纯文本对话模式」agent 预设——整份替换系统提示词进行纯角色对话，并附带随包世界书（61 条设定，按触发词自动注入）、长期记忆（remember / forget）与可配置称呼；联网搜索保留，表情包需另装 dsh-meme。随包人设文本与世界书数据整理自开源项目 Cyrene-Agent（MIT）。",
   "type": "module",
   "main": "./index.js",
   "license": "MIT",
   "author": "Cyrene-xl",
+  "contributors": [
+    {
+      "name": "YOGEMOW",
+      "url": "https://github.com/YOGEMOW"
+    }
+  ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Cyrene-xl/DSH-Cyrene.git"
+    "url": "git+https://github.com/YOGEMOW/DSH-Cyrene.git"
+  },
+  "upstream": {
+    "type": "git",
+    "url": "https://github.com/Cyrene-xl/DSH-Cyrene.git"
   },
   "bugs": {
-    "url": "https://github.com/Cyrene-xl/DSH-Cyrene/issues"
+    "url": "https://github.com/YOGEMOW/DSH-Cyrene/issues"
   },
-  "homepage": "https://github.com/Cyrene-xl/DSH-Cyrene#readme",
+  "homepage": "https://github.com/YOGEMOW/DSH-Cyrene#readme",
   "keywords": [
     "dsh-plugin",
     "deepseek-harness",
@@ -52,8 +62,8 @@
     "id": "dsh-cyrene",
     "name": "纯文本对话模式",
     "displayName": "纯文本对话模式",
-    "version": "0.3.1",
-    "repo": "Cyrene-xl/DSH-Cyrene",
+    "version": "0.4.0",
+    "repo": "YOGEMOW/DSH-Cyrene",
     "permissions": "不在运行时申请任何权限",
     "bundle": {
       "patch": "./cordis.patch.yml"
@@ -61,7 +71,9 @@
   },
   "scripts": {
     "test": "node --test \"tests/*.mjs\"",
-    "harness:check": "node --check index.js && node --check memory.js && node --check nickname.js && node --check worldbook/index.mjs && node --check worldbook/parse.mjs && node --check worldbook/match.mjs && node --check worldbook/assemble.mjs",
+    "harness:check": "node --check index.js && node --check memory.js && node --check nickname.js && node --check worldbook/index.mjs && node --check worldbook/parse.mjs && node --check worldbook/match.mjs && node --check worldbook/assemble.mjs && node --check scripts/build-bundle-patch.mjs",
+    "build:patch": "node scripts/build-bundle-patch.mjs",
+    "check:patch": "node scripts/build-bundle-patch.mjs --check",
     "install:preset": "node scripts/install.mjs"
   },
   "engines": {

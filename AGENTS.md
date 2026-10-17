@@ -36,13 +36,13 @@ npm run harness:check # 全部运行时代码的语法检查
 
 | 改什么 | 怎么生效 |
 | --- | --- |
-| 预设 YAML `preset/<id>/agent.cordis.yml` | **下次新建会话**，不用重启（但已加入的会话保留旧组装） |
+| 预设 YAML `preset/<id>/agent.cordis.yml` | **先 `node scripts/build-bundle-patch.mjs` 重新生成**，再重装 / 升级插件并重启。漏了生成会静默用旧人设（`npm test` 的 `--check` 断言会拦） |
 | 插件源码 `.js` / `.mjs` | **必须重启** —— loader 用裸 `import()`，没有缓存击穿 |
 
-## ⚠️ 预设的安装方式在 DSH 0.2.0 变了（静默失效）
+## ⚠️ 预设注册：0.4.0 起随 bundle 补丁，不要手改 `cordis.patch.yml`
 
 **0.1.x**：预设由 `dsh-agent-presets` **扫描目录**发现 —— `~/.dsh/.agent-presets/<id>/`。
-`scripts/install.*` 做的就是这件事。
+`scripts/install.*` 做的就是这件事（0.3.x 及更早需要它）。
 
 **0.2.0 起**：换成声明式注册表。`@deepseek-ai/dsh-agent-preset-registry` 的文档原话是
 「**注册表不扫描目录，也不接受 preset 路径**」；预设改为一行插件声明：
@@ -56,14 +56,17 @@ npm run harness:check # 全部运行时代码的语法检查
     plugins: [ …整套 entry list… ]     # 必填
 ```
 
-**危险的地方在于它不报错。** 在 0.2.0+ 上跑 `scripts/install.mjs` 依然会成功、
-依然打印"已安装"、目录也确实出现了 —— 但预设**永远不出现在界面上**。实测反馈里
-一位 Windows 用户（桌面版 0.2.0-rc.2）就卡在这里，排查成本很高。
+**0.4.0 起**：本仓库把声明并进了 `cordis.patch.yml`，装插件本体即注册两个预设。
+预设段是**生成内容**：
 
-对策：`scripts/export-preset-declarations.mjs` 把 `preset/<id>/` 机械转换成上面那种
-声明（组合本身就是 entry list，只做整体缩进，不改写内容），生成的片段贴进
-`<DSH_HOME>/profiles/<profile>/cordis.patch.yml`。`tests/preset.test.mjs` 有一条
-往返用例守着它 —— 那个生成器错了会**静默**产出不一致的声明。
+```bash
+node scripts/build-bundle-patch.mjs          # 改完 preset/<id>/ 后重新生成
+node scripts/build-bundle-patch.mjs --check  # 只校验（npm test 里有一条断言）
+```
+
+不要手改生成段：下次构建会被覆盖；更糟的是手改后忘了同步，模式会**静默**用旧人设。
+`scripts/export-preset-declarations.mjs` 仍是底层的机械转换器（`declarationFor(id)`），
+它的往返测试也还在。
 
 ## 来源与边界
 
@@ -88,6 +91,7 @@ npm run harness:check # 全部运行时代码的语法检查
 | `scripts/install.sh` | ✅ 已验 | 用**临时 `DSH_HOME`** 实跑：安装 → 幂等复跑报"已是最新" → `--uninstall` |
 | `scripts/install.mjs` | ✅ 已验 | 同上（安装 / 幂等 / 卸载三条都跑过）。**Windows 也走这条** |
 | `scripts/export-preset-declarations.mjs` | ✅ 已验 | 往返比对：解析生成结果，`insert[0].config.plugins` 与源组合深度相等；且断言 patch 顶层只允许出现 `- insert:` |
+| `scripts/build-bundle-patch.mjs` | ✅ 已验 | `npm test` 的 `--check` 断言：`cordis.patch.yml` 必须与 `preset/` 源生成结果逐字一致 |
 | ~~`scripts/install.ps1` / `install.bat`~~ | **已删除** | 作者没有自己的电脑，项目是在 DSH App（Android）里做的 —— 那两个脚本**无法实测**，靠用户反馈连试三轮仍未跑通。与其留一条没人能验证的路，不如删掉。详见下面「Windows 已知坑」 |
 | **Windows 兼容性** | ✅ 已验（由 CI 代跑） | `.github/workflows/test.yml` 的 `test-windows` job 在 `windows-latest` 上跑：`harness:check`、`npm test`、声明导出必须有输出、`install.mjs` 安装/幂等/卸载。上线第一次跑就抓到「CRLF 让世界书静默失效」，见 `docs/windows.md` 第 6 条 |
 

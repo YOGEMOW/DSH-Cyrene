@@ -18,6 +18,9 @@
 > Cyrene-Agent（MIT，Copyright (c) 2026 Playa）。**使用前请先读
 > [`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md)。**
 
+> 本仓库是 [`Cyrene-xl/DSH-Cyrene`](https://github.com/Cyrene-xl/DSH-Cyrene) 的镜像分支
+> （维护：YOGEMOW），原仓库保留为 git `upstream`，同步方式见「[上游同步](#上游同步)」。
+
 ## 关于随包的人设文本
 
 两套预设都**已包含可用的角色人设**，装完即可对话。人设文本来自开源项目
@@ -89,13 +92,25 @@
 dsh plugin --profile <你的 profile> add dsh-cyrene
 ```
 
-`cordis.patch.yml` 是纯 `insert` 形式，可热挂载，通常不需要重启。
+`cordis.patch.yml` 的条目都是 `insert` 形式（含预设声明）。插件本体可热挂载；
+预设是否立即出现取决于 DSH 版本 —— 升级后**重启一次**最稳妥。
 
-### 2. 装预设（必须单独做一步）
+### 2. 预设：0.4.0 起随插件本体注册（不需要这一步）
 
-**DSH 没有公开的 agent 预设安装 API**——`dsh-agent-presets` 只按
-`~/.dsh/.agent-presets/<id>/` 目录扫描发现预设，不对外暴露写入接口。
-所以预设必须拷贝到位：
+0.4.0 起，两套预设的声明已并入插件自带的 `cordis.patch.yml`：装好 / 升级插件后
+**重启 DSH**，新建对话的模式选择器里就会直接出现「纯文本对话模式」和「昔涟工作模式」，
+不用再单独装预设，也不用再往 profile 里贴声明。
+
+> 为什么改成这样：DSH 0.2.0 起预设换成**声明式注册表**（注册表不扫描目录），
+> 把声明随包发运是最不容易漏的一步 —— 以前漏装不会报错，只是模式不出现。
+>
+> ⚠️ **0.4.0 要求 DSH 0.2.0 及以上。** 还停在 0.1.x 的话请用 0.3.1 的目录安装方式。
+
+<details>
+<summary>旧版本（0.3.x 及更早）的安装方式 —— 仅排障时参考</summary>
+
+**0.1.x：目录安装。** `dsh-agent-presets` 按 `~/.dsh/.agent-presets/<id>/`
+扫描发现预设，所以要把目录拷到位：
 
 ```bash
 # Linux / macOS
@@ -155,6 +170,8 @@ node scripts/install.mjs
 要覆盖得加 `--force` / `-Force`，会先自动备份。
 
 `$DSH_HOME` 环境变量可覆盖默认的 `~/.dsh`。
+
+</details>
 
 ### 3. （可选）换成人设
 
@@ -346,17 +363,38 @@ dsh plugin --profile <你的 profile> add <插件名>
 
 ## 自定义
 
-装好之后预设就在 `~/.dsh/.agent-presets/<id>/`（`chat` 或 `cyrene-work`），
-**直接改那两个文件即可**，DSH 会按目录实时发现：
+0.4.0 起预设是**生成进 bundle 补丁**的：仓库里 `preset/<id>/` 是源，`cordis.patch.yml`
+的预设段由 `node scripts/build-bundle-patch.mjs` 生成。所以改人设有两条路：
 
-- `preset.yml` —— 模态名称、描述、排序（`order`）
-- `agent.cordis.yml` —— 人设正文与工具挂载
+1. **改仓库（推荐，能长期保留）**：编辑 `preset/<id>/agent.cordis.yml`（人设与工具挂载）
+   或 `preset.yml`（模态名称、描述、`order`），然后
 
-> 改的是 `~/.dsh/` 下**装好的那一份**；仓库里的 `preset/<id>/` 是发运模板，
-> 它不会自动跟着变。想把改动回灌进仓库，得手动同步过去。
+   ```bash
+   node scripts/build-bundle-patch.mjs   # 重新生成 cordis.patch.yml
+   ```
 
-改完**不用重新安装插件**。但注意：重新跑 `install.sh` 时若检测到内容不同会拒绝覆盖，
-这正是为了防止你的改动被抹掉。
+   再升级 / 重装插件并重启 DSH。`npm test` 里有一条 `--check` 断言，忘了重新生成会红。
+
+2. **只在本机临时改**：在 `<DSH_HOME>/profiles/<你的 profile>/cordis.patch.yml` 里按
+   预设条目 id（`preset-chat` / `preset-cyrene-work`）写覆盖，不要改装好的 `node_modules`
+   里的生成文件 —— 下次升级就被覆盖了。
+
+> 0.1.x 的老机制（`~/.dsh/.agent-presets/<id>/` 目录，改完即时生效）只在 0.3.x 及更早
+> 的版本里成立；0.4.0 不再使用它。
+
+## 上游同步
+
+本仓库是 [`Cyrene-xl/DSH-Cyrene`](https://github.com/Cyrene-xl/DSH-Cyrene) 的镜像分支，
+本地 clone 里原仓库被配置成 `upstream`：
+
+```bash
+git remote add upstream https://github.com/Cyrene-xl/DSH-Cyrene.git  # 已有则跳过
+git fetch upstream
+git merge upstream/main        # 或 git rebase upstream/main
+```
+
+冲突主要集中在 `preset/` 与文档；合并后跑一遍 `npm test`，并用
+`node scripts/build-bundle-patch.mjs` 重新生成补丁。
 
 ## 重命名
 
@@ -380,7 +418,7 @@ dsh-cyrene/
 │   ├── match.mjs            触发词 / 常驻 / 连带匹配（纯函数）
 │   ├── assemble.mjs         组装注入块（纯函数）
 │   └── data/                随包发运的世界书数据（61 条，5 个文件）
-├── cordis.patch.yml         bundle patch：把插件挂进 loader
+├── cordis.patch.yml         bundle patch：挂插件 + 声明预设（预设段为生成内容）
 ├── package.json             含 dsh.bundle.patch 等声明
 ├── plugin.json              DSH 插件清单
 ├── dsh.plugin.json          同上（兼容不同版本的清单名）
@@ -392,9 +430,10 @@ dsh-cyrene/
 │       ├── agent.cordis.yml 工作模式人设 + 标准模式全套工具
 │       └── preset.yml       模态元信息
 ├── scripts/
-│   ├── install.sh           Linux / macOS
-│   ├── install.mjs          跨平台（Node，Windows 也走这条）
-│   └── export-preset-declarations.mjs  DSH 0.2.0+ 的声明式预设导出
+│   ├── install.sh           Linux / macOS（0.1.x 目录方式，旧版排障用）
+│   ├── install.mjs          跨平台（Node，Windows 也走这条；同上）
+│   ├── export-preset-declarations.mjs  DSH 0.2.0+ 的声明式预设导出
+│   └── build-bundle-patch.mjs          生成 cordis.patch.yml（插件行 + 预设声明）
 ├── tests/
 │   ├── worldbook.test.mjs   世界书解析 / 匹配 / 组装 / 注入层的单元测试
 │   ├── memory.test.mjs      记忆的净化 / 限长 / forget 边界 / 注入块包裹
@@ -414,9 +453,10 @@ dsh-cyrene/
 
 ## 排查
 
-**装了插件但模式选择器里没有新选项** —— 预设没装。跑 `scripts/install.*`，
-确认 `~/.dsh/.agent-presets/chat/` 与 `~/.dsh/.agent-presets/cyrene-work/` 下
-确实都有 `agent.cordis.yml` 和 `preset.yml`。
+**装了插件但模式选择器里没有新选项** —— 先确认 DSH 是 **0.2.0+**、插件版本是 **0.4.0+**，
+然后重启一次。0.4.0 起预设由 bundle 补丁注册；仍不出现时检查
+`<DSH_HOME>/profiles/<你的 profile>/cordis.patch.yml` 有没有把 `preset-chat` /
+`preset-cyrene-work` 覆盖掉（0.3.x 及更早才需要跑 `scripts/install.*` 装目录）。
 
 **滑块上少了某一档** —— 新建对话页的滑块只在**空白会话**显示，且会话预设一旦
 锁定（发过消息）就随 Hero 一起消失，这是 DSH 的原生行为。
@@ -433,8 +473,9 @@ dsh-cyrene/
 模式在选择器里看着好好的，发第一条消息才炸，之后每一轮都失败。也正因如此，
 不要照搬上游 Cyrene-Agent 新版 prompts 里的模板变量。
 
-**想彻底卸载** —— `scripts/install.sh --uninstall` 删预设，再
-`dsh plugin --profile <你的 profile> remove dsh-cyrene` 删插件。
+**想彻底卸载** —— 0.4.0 起预设随插件注册，直接
+`dsh plugin --profile <你的 profile> remove dsh-cyrene` 即可；0.3.x 及更早还要
+`scripts/install.sh --uninstall` 清掉 `~/.dsh/.agent-presets/` 里的目录。
 
 ## 开发与测试
 
