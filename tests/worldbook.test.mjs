@@ -519,7 +519,7 @@ test('注入层：不发布任何服务（预设里发布全局服务会让整�
   const { ctx, provided } = mockCtx();
   applyWorldbook(ctx);
   // dsh-agent-presets 的 leakedServices 校验会把预设内发布的全局服务判为污染，
-  // 直接抛错让整个预设挂载失败 —— 表现是「纯文本对话模式」不可用。
+  // 直接抛错让整个预设挂载失败 —— 表现是「昔涟聊天模式」不可用。
   assert.deepEqual(Object.keys(provided), [], '预设级插件不得 ctx.provide()');
 });
 

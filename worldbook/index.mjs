@@ -352,7 +352,7 @@ export function apply(ctx) {
   //
   // dsh-agent-presets 挂载预设后会做 leakedServices 校验：预设 fiber 内发布、
   // 并落进根 isolate realm 的服务会被判为"污染进程全局"，直接抛错让**整个预设
-  // 挂载失败** —— 表现是「纯文本对话模式」不可用，连新建会话都会出问题。
+  // 挂载失败** —— 表现是「昔涟聊天模式」不可用，连新建会话都会出问题。
   // 真要发布服务，得用 isolate realm，或把插件搬到 host composition（profile 级）。
 
   if (config.trace) logLine(`apply 完成｜dir=${config.dir}（条目缓存待首次装配时载入）`);

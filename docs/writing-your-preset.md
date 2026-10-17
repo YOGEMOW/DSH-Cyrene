@@ -8,15 +8,26 @@
 
 ## 1. 文件位置
 
-装好之后预设在这两个文件里：
+0.4.0 起来源直接是仓库/安装包里的 `preset/<id>/`：
 
 ```
-~/.dsh/.agent-presets/chat/
-├── preset.yml          模态元信息（名称、描述、排序）
-└── agent.cordis.yml    人设全文 + 工具挂载
+preset/
+├── chat/                昔涟聊天模式
+│   ├── preset.yml       模态元信息（名称、描述、排序）
+│   └── agent.cordis.yml 人设全文 + 工具挂载
+└── cyrene-work/         德谬歌工作模式
+    ├── preset.yml
+    └── agent.cordis.yml
 ```
 
-DSH 按目录实时发现预设，**改完不用重装插件**，切换一下模式选择器即可生效。
+0.4.0 起预设声明由包自带的 `cordis.patch.yml` 注册，所以**改完要重新生成补丁**，
+再升级 / 重装插件并重启 DSH：
+
+```bash
+node scripts/build-bundle-patch.mjs
+```
+
+0.3.x 及更早才使用 `~/.dsh/.agent-presets/<id>/` 目录（改完即时生效）。
 
 ## 2. 往哪里填
 
@@ -96,10 +107,12 @@ node -e "const Y=require('yaml');Y.parse(require('fs').readFileSync(process.argv
 
 ## 6. 常见问题
 
-**改了没生效** —— 确认改的是 `~/.dsh/.agent-presets/chat/` 下的文件（不是仓库里的
-`preset/` 模板）。仓库里的改动要重新跑 `scripts/install.sh --force` 才会同步过去。
+**改了没生效** —— 0.4.0+：确认改的是仓库里的 `preset/<id>/`，并运行
+`node scripts/build-bundle-patch.mjs` 重新生成补丁、重装 / 重启。改
+`~/.dsh/.agent-presets/` 只对 0.3.x 及更早有效。
 
-**模式选择器里没有这个预设** —— 预设没装。跑 `scripts/install.*`。
+**模式选择器里没有这个预设** —— 0.4.0+ 先确认 DSH >= 0.2.0 并重启一次；
+0.3.x 及更早才需要跑 `scripts/install.*`。
 
 **还是有助手口气** —— 检查 `complete` 是不是被改成 `false` 了。
 

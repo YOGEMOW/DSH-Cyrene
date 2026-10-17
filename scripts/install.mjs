@@ -161,7 +161,9 @@ async function main() {
   // 这里不做版本探测（探测不可靠：不知道对方 DSH 装在哪），而是把两条路都讲清楚。
   console.log('⚠️ 如果你用的是 DSH 0.2.0 或更新：上面的目录方式【不会生效】。');
   console.log('   0.2.0 起改用声明式注册表，它不扫描 ~/.dsh/.agent-presets/。');
-  console.log('   请改用声明方式：');
+  console.log('   0.4.0 起本仓库已把预设声明随插件 bundle 一起发运 ——');
+  console.log('   只要装了插件本体（dsh plugin add dsh-cyrene）并重启 DSH，就不需要本脚本。');
+  console.log('   0.2.0 ~ 0.3.x 才需要手动贴声明：');
   console.log('     node scripts/export-preset-declarations.mjs --out=preset-declarations.yml');
   console.log('   然后把生成的内容**作为一个新元素**追加进你的 profile 补丁：');
   console.log(`     ${join(dshHome, 'profiles', '<你的 profile>', 'cordis.patch.yml')}`);

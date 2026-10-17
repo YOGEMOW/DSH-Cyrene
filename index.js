@@ -42,13 +42,15 @@ export const inject = [];
 /**
  * 插件加载钩子。
  *
- * 只记录一行日志，便于用户确认插件已被 loader 读到。
+ * 只记录一行日志，便于用户确认插件已被 loader 读到、版本是否更新。
  * 本文件不做任何文件写入、不注册工具、不改动系统提示词——
- * 预设的生效完全由 DSH 自身对 ~/.dsh/.agent-presets/ 的发现机制负责。
+ * 0.4.0 起预设声明随包内的 cordis.patch.yml 一起发运，由 DSH 的 preset registry
+ * 在 profile 启动时注册（不再是拷贝 ~/.dsh/.agent-presets/ 的老机制）。
  */
 export function apply(ctx) {
   ctx?.logger?.info?.(
-    '[dsh-cyrene] 已加载。若尚未安装预设，请运行 scripts/install.sh（或 install.ps1 / install.bat）：' +
-      'DSH 没有公开的预设安装 API，预设必须落到 ~/.dsh/.agent-presets/chat/ 才会被发现。'
+    `[dsh-cyrene] 已加载 v${version}（昔涟聊天模式 / 德谬歌工作模式）。`
+      + '若模式选择器里看不到这两个预设：确认 DSH >= 0.2.0，并重启 DSH —— '
+      + '0.4.0 起预设随 bundle 补丁注册，不再需要安装脚本。'
   );
 }

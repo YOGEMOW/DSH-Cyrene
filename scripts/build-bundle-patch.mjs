@@ -35,7 +35,8 @@ const HEADER = `# dsh-cyrene bundle patch
 #    \`preset/<id>/\`，然后运行 \`node scripts/build-bundle-patch.mjs\` 重新生成，
 #    再升级 / 重装插件并重启 DSH。
 #
-# 刻意保持"纯 insert(id/name)"形式 —— 可热挂载，不需要重启即可生效。
+# 条目都是纯 insert(id/name) 形式；但**预设声明属于启动期注册** —— 升级 / 重装后
+# 请重启 DSH（至少新建会话前重启一次），不要假设热挂载一定生效。
 # 不要在这里写 config.memeRoot 之类的机器相关路径：硬编码路径在别人机器上必然
 # 指向不存在的目录，插件会直接起不来（这是 dsh-meme 踩过的坑）。
 `;
