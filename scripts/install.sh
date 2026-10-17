@@ -19,6 +19,12 @@
 #   scripts/install.sh --uninstall
 set -euo pipefail
 
+cat <<'BANNER'
+⚠️  DSH >= 0.4.0 不需要本脚本：两套预设的声明随插件 bundle 一起发运，
+    装好插件并重启 DSH 即可。本脚本只适用于 0.1.x（按
+    ~/.dsh/.agent-presets/ 目录扫描发现预设的年代）。
+BANNER
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SRC_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)/preset"
 DSH_HOME="${DSH_HOME:-$HOME/.dsh}"

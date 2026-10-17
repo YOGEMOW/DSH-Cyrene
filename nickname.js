@@ -17,7 +17,7 @@
  *
  * 记忆相关的东西在 memory.js，跟这里分开，各自单一职责。
  */
-import { existsSync, readFileSync } from 'node:fs';
+import { readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
 /** 认 DSH_HOME，跟预设安装位置同源。 */
@@ -40,7 +40,7 @@ export const inject = ['systemPrompt'];
  * @param value - 原始输入。
  * @returns 可安全放进提示词的昵称；非法时返回空串。
  */
-function sanitize(value) {
+export function sanitizeNickname(value) {
   if (typeof value !== 'string') return '';
   const cleaned = value
     .replace(/[\r\n\t]+/g, ' ')
@@ -50,6 +50,9 @@ function sanitize(value) {
   return cleaned === '' ? '' : cleaned.slice(0, MAX_LENGTH);
 }
 
+/** 文件读取缓存：mtime + size 没变就不重复读盘（每轮装配都会调用）。 */
+let cache = { key: '', value: DEFAULT_NICKNAME };
+
 /**
  * 读称呼：优先沿用昵称插件的设置，否则用默认值。
  * 整个过程绝不抛错 —— 装配期抛错会打掉整轮对话。
@@ -57,14 +60,17 @@ function sanitize(value) {
  */
 function loadNickname() {
   try {
-    if (existsSync(EXTERNAL_STORE)) {
-      const value = sanitize(JSON.parse(readFileSync(EXTERNAL_STORE, 'utf8'))?.nickname);
-      if (value !== '') return value;
-    }
+    const stat = statSync(EXTERNAL_STORE);
+    const key = `${stat.mtimeMs}:${stat.size}`;
+    if (key === cache.key) return cache.value;
+    const value = sanitizeNickname(JSON.parse(readFileSync(EXTERNAL_STORE, 'utf8'))?.nickname);
+    const nickname = value !== '' ? value : DEFAULT_NICKNAME;
+    cache = { key, value: nickname };
+    return nickname;
   } catch {
     /* 没文件、坏文件、非法内容，都走默认值 */
+    return DEFAULT_NICKNAME;
   }
-  return DEFAULT_NICKNAME;
 }
 
 /**

@@ -48,6 +48,10 @@ node scripts\install.mjs
 
 ## 已知的坑（六条）
 
+> 这几条主要来自 0.1.x–0.3.x 的「拷贝预设目录」年代，保留作历史与排障参考。
+> 0.4.0+ 装插件本体、重启 DSH 即可，不再需要 `install.mjs`；但其中
+> 「跨平台脚本必须真机验证」的教训仍然适用。
+
 前五条来自真实 Windows 用户反馈，**都只能靠真实 Windows 暴露** —— 开发机上
 `node --check`、`npm test`、人工审查全都看不出来。第六条是 CI 的 `windows-latest`
 job 上线当天自己抓到的：它不需要用户反馈，因为 CI 就是一台真 Windows 机器。

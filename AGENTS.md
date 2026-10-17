@@ -85,9 +85,9 @@ node scripts/build-bundle-patch.mjs --check  # 只校验（npm test 里有一条
 
 | 对象 | 状态 | 怎么验的 |
 | --- | --- | --- |
-| `index.js` / `memory.js` / `nickname.js` / `worldbook/*` | ✅ 已验 | `npm test`（74 条）+ `npm run harness:check`（全量语法检查） |
+| `index.js` / `memory.js` / `nickname.js` / `worldbook/*` | ✅ 已验 | `npm test`（全部单元测试）+ `npm run harness:check`（全量语法检查） |
 | `preset/chat/`、`preset/cyrene-work/` 的 YAML | ✅ 已验 | 解析 + 结构断言（`tests/preset.test.mjs`：条目数、`complete: true`、两模式挂载差异） |
-| `preset/cyrene-work/` 的**工具行与内置 standard 的同步性** | ✅ 已验（**装了 DSH 才跑**） | `tests/preset.test.mjs` 的漂移护栏：断言比 standard 少 0 行、多出的只允许 `cyrene-memory` / `dsh-cyrene-worldbook`。CI 上没有 DSH，该文件整体跳过 |
+| `preset/cyrene-work/` 的**工具行与内置 standard 的同步性** | ✅ 已验（CI `drift` job） | `tests/preset.test.mjs` 的漂移护栏：断言比 standard 少 0 行、多出的只允许 `cyrene-memory` / `dsh-cyrene-worldbook`、没有额外 disabled。CI 会装 `@deepseek-ai/dsh-web-app@0.2.1-rc.2` 做对照；本机没 DSH 时仍会跳过 |
 | `scripts/install.sh` | ✅ 已验 | 用**临时 `DSH_HOME`** 实跑：安装 → 幂等复跑报"已是最新" → `--uninstall` |
 | `scripts/install.mjs` | ✅ 已验 | 同上（安装 / 幂等 / 卸载三条都跑过）。**Windows 也走这条** |
 | `scripts/export-preset-declarations.mjs` | ✅ 已验 | 往返比对：解析生成结果，`insert[0].config.plugins` 与源组合深度相等；且断言 patch 顶层只允许出现 `- insert:` |
@@ -122,7 +122,8 @@ node scripts/build-bundle-patch.mjs --check  # 只校验（npm test 里有一条
 
 > **抄本漂移是唯一一类"不会报错"的失效。** `preset/cyrene-work/` 的工具行整段抄自内置
 > standard，DSH 升级后内置变了这份不会变 —— 表现是静默少挂一个工具。上面那条漂移护栏
-> 就是为此设的：**它只在装了 DSH 的机器上跑**，所以别把它当成 CI 覆盖到了。
+> 就是为此设的：CI 的 `drift` job 会装一份 `@deepseek-ai/dsh-web-app@0.2.1-rc.2`
+> 提供 standard.patch.yml 真跑它。**升级 DSH 时要同步改 CI 里的版本号和这份抄本。**
 
 > 验证安装脚本时**务必用临时 `DSH_HOME`**（`DSH_HOME=/tmp/xxx scripts/install.sh`），
 > 否则会覆盖真实 `~/.dsh/.agent-presets/` 下你正在用的预设。

@@ -118,3 +118,44 @@ jobs:
           node scripts/install.mjs --uninstall
           [ ! -e "$DSH_HOME/.agent-presets/chat" ] || { echo "✗ 卸载没清掉"; exit 1; }
           echo "✓ 安装 / 幂等 / 卸载 三条都过"
+
+  # ── 抄本漂移护栏 ──────────────────────────────────────────────────────────
+  #
+  # preset.test.mjs 的"工具行 == 内置 standard"断言需要一份可解析的 DSH 安装；
+  # 之前 ubuntu / windows job 都没装 DSH，于是这 3 条一直 skipped —— 等于没验。
+  #
+  # DSH 0.2.x 的 standard 预设随 `@deepseek-ai/dsh-web-app` 发运：
+  #   presets/standard.patch.yml
+  # 这里只把那个包（和 yaml 解析器）装进临时目录，不装整个 DSH。
+  #
+  # ⚠️ 这个版本号就是"本仓库声称对齐的 DSH 基线"：升级 DSH 时，
+  #    先同步 preset/cyrene-work/agent.cordis.yml，再改这里的版本号。
+  drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: 准备 standard 预设 fixture
+        run: |
+          set -euo pipefail
+          FIXTURE="$RUNNER_TEMP/dsh-fixture"
+          mkdir -p "$FIXTURE/node_modules/@deepseek-ai"
+          cd "$FIXTURE"
+          npm init -y >/dev/null
+          npm install --no-save --no-audit --no-fund yaml >/dev/null
+
+          mkdir -p "$RUNNER_TEMP/pack"
+          cd "$RUNNER_TEMP/pack"
+          npm pack --silent @deepseek-ai/dsh-web-app@0.2.1-rc.2 >/dev/null
+          tar -xzf deepseek-ai-dsh-web-app-0.2.1-rc.2.tgz
+          cp -R package "$FIXTURE/node_modules/@deepseek-ai/dsh-web-app"
+          test -f "$FIXTURE/node_modules/@deepseek-ai/dsh-web-app/presets/standard.patch.yml"
+
+      - name: 抄本漂移护栏（对照 DSH 0.2.1-rc.2 的 standard）
+        env:
+          DSH_INSTALL: ${{ runner.temp }}/dsh-fixture
+        run: npm test

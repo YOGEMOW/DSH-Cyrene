@@ -1,7 +1,8 @@
 # 改这个仓库前必须知道的几件事
 
 这份文档记录的是**实测出来的 DSH 行为** —— 它们不在 DSH 官方文档里，都是踩出来的。
-每条都注明了源码位置，方便你自己复核。
+行为按 DSH 0.2.1-rc.2 整理；内部函数名相对稳定，但**行号会随版本漂移**，所以这里只写
+函数 / 行为，不写死行号。
 
 ---
 
@@ -10,8 +11,8 @@
 ### 1. 装配跑在用户消息落库之前
 
 ```
-dsh-agent-loop/lib/index.js:889    assemble()                      ← provider 在这里被调用
-dsh-agent-loop/lib/index.js:1028   session.append("user/message")  ← 用户消息到这里才进会话
+dsh-agent-loop · assemble()                      ← provider 在这里被调用
+dsh-agent-loop · session.append("user/message")  ← 用户消息到这里才进会话
 ```
 
 后果：任何在**装配期求值**的 provider（`systemPrompt.variable()` / `systemPrompt.context()`）

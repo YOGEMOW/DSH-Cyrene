@@ -4,6 +4,43 @@
 `git log`（每条说明都写得比较长），已知的坑看 [`docs/pitfalls.md`](./docs/pitfalls.md)
 与 [`docs/windows.md`](./docs/windows.md)。
 
+## [0.4.2] — 2026-10-18
+
+### 优化 / 更新
+
+**预设工具行对齐 DSH 0.2.1-rc.2（建议升级）**
+
+- 「德谬歌工作模式」的工具行重新从 `@deepseek-ai/dsh-web-app/presets/standard.patch.yml`
+  同步：补上 `time-context` / `tool-schedule` / `workflow-ptc` / `tool-plugin-manager` /
+  `tool-plugin-market`；移除上游已删的 `workflow-worker-thread` / `tool-ralph` 与
+  两个可选 subagent provider 行。之前的抄本停留在更早的 standard —— **不会报错，
+  只是少挂 / 多挂工具**，现在由 CI 的 `drift` job 每次对照基线检查。
+
+**抄本漂移护栏终于真的在 CI 跑**
+
+- `tests/preset.test.mjs` 原来要从 DSH 安装处解析 `@deepseek-ai/dsh-agent-presets`
+  （0.1.x 的包名），在 0.2.x 上永远 skip。现在按版本解析
+  `dsh-web-app/presets/standard.patch.yml`，并新增 `drift` job 安装
+  `@deepseek-ai/dsh-web-app@0.2.1-rc.2` 做对照。
+
+**世界书配置 / 数据热更新**
+
+- `cyrene-worldbook.json` 改为最多 2 秒重读一次，改 `dir` / `enabled` / `maxActive`
+  不用重启 DSH。
+- 世界书数据改为按文件 mtime + size 签名缓存：改完下一轮立即重新解析，不再等 30 秒 TTL。
+- 配置字段归一化并夹取（`maxActive` 1–50、`scanDepth` 1–5），写错类型不会带崩插件。
+
+**其它**
+
+- `nickname.js` 按 mtime + size 缓存昵称文件，不再每轮装配都读盘。
+- `install.sh` / `install.mjs` 开头加横幅：0.4.0+ 不需要它们，只用于 0.1.x。
+- 移除 `plugin.json` / `dsh.plugin.json` 里 DSH 不读取的 `contributes` 字段，
+  避免误以为它会二次注册预设。
+- `docs/pitfalls.md` 不再写死 DSH 内部行号；`docs/windows.md` 标注 0.1.x–0.3.x 历史背景。
+- 新增测试：`tests/config.test.mjs`（配置归一化 / 目录签名）、`tests/nickname.test.mjs`
+  （昵称清洗）。
+- 文档不再写死测试条数，避免每次加测试都要改多处。
+
 ## [0.4.1] — 2026-10-18
 
 ### 变更

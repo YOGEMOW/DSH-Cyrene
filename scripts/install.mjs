@@ -28,6 +28,10 @@ const argv = new Set(process.argv.slice(2));
 const force = argv.has('--force');
 const uninstall = argv.has('--uninstall');
 
+console.log('⚠️  DSH >= 0.4.0 不需要本脚本：两套预设的声明随插件 bundle 一起发运，');
+console.log('    装好插件并重启 DSH 即可。本脚本只适用于 0.1.x（按目录扫描发现预设的年代）。');
+console.log('');
+
 /** 目录内容指纹：相对路径 + 文件内容，按路径排序后哈希。 */
 async function dirFingerprint(dir) {
   const hash = createHash('sha256');

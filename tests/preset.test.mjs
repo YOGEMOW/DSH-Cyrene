@@ -17,7 +17,11 @@
  *
  * 本仓库**零依赖**（没有 package.json 依赖、没有 lockfile），所以这里不 import `yaml`，
  * 而是**从 DSH 安装处**用 createRequire 解析它 —— 内置 standard 预设本来也只有在装了
- * DSH 的机器上才存在，两者同源。CI 上没有 DSH，于是整个文件跳过；本机有，就会真跑。
+ * DSH 的机器上才存在，两者同源。
+ *
+ * DSH 0.2.x 的 standard 在 `@deepseek-ai/dsh-web-app/presets/standard.patch.yml`；
+ * 0.1.x 在 `@deepseek-ai/dsh-agent-presets/presets/standard/agent.cordis.yml`。
+ * CI 的 `drift` job 会装一份 `@deepseek-ai/dsh-web-app` 做对照；本机没有 DSH 时跳过。
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -30,37 +34,66 @@ import { fileURLToPath } from 'node:url';
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(here, '..');
 
-/** DSH 安装位置。可用 `DSH_INSTALL` 覆盖（比如换了全局安装目录）。 */
+/** DSH 安装位置。可用 `DSH_INSTALL` 覆盖（比如 CI 里装到临时目录）。 */
 const DSH_INSTALL = process.env.DSH_INSTALL || '/usr/local/lib/node_modules/@deepseek-ai/dsh';
 
 /**
- * 解析测试所需的两样东西：`yaml` 解析器，以及内置 standard 预设的路径。
+ * 解析测试需要的两样东西：`yaml` 解析器，以及内置 standard 预设。
  * 任一样拿不到就返回 undefined —— 调用方据此整条跳过。
+ *
+ * 返回的 `shape` 区分两代 DSH 的文件形态：
+ *   - `patch`：0.2.x，standard 是一个 `- insert:` 补丁（config.plugins 才是插件行）
+ *   - `list` ：0.1.x，standard 本身就是插件行数组
  */
 function loadUpstream() {
   if (!existsSync(join(DSH_INSTALL, 'package.json'))) return undefined;
+  const req = createRequire(join(DSH_INSTALL, 'package.json'));
   let YAML;
-  let stdPath;
   try {
-    const req = createRequire(join(DSH_INSTALL, 'package.json'));
     YAML = req('yaml');
-    const presetsPkg = req.resolve('@deepseek-ai/dsh-agent-presets/package.json');
-    stdPath = join(dirname(presetsPkg), 'presets', 'standard', 'agent.cordis.yml');
   } catch {
     return undefined;
   }
-  if (typeof YAML?.parse !== 'function' || !existsSync(stdPath)) return undefined;
-  return { YAML, stdPath };
+  if (typeof YAML?.parse !== 'function') return undefined;
+
+  // DSH >= 0.2.0：standard 在 dsh-web-app 的 presets/standard.patch.yml
+  try {
+    const webAppPkg = req.resolve('@deepseek-ai/dsh-web-app/package.json');
+    const stdPath = join(dirname(webAppPkg), 'presets', 'standard.patch.yml');
+    if (existsSync(stdPath)) return { YAML, stdPath, shape: 'patch' };
+  } catch {
+    /* 没有 web-app，继续试 0.1.x 的包 */
+  }
+
+  // DSH 0.1.x：standard 在 dsh-agent-presets 的 presets/standard/agent.cordis.yml
+  try {
+    const presetsPkg = req.resolve('@deepseek-ai/dsh-agent-presets/package.json');
+    const stdPath = join(dirname(presetsPkg), 'presets', 'standard', 'agent.cordis.yml');
+    if (existsSync(stdPath)) return { YAML, stdPath, shape: 'list' };
+  } catch {
+    /* 也没有，跳过 */
+  }
+
+  return undefined;
 }
 
 const upstream = loadUpstream();
 const skipUpstream = upstream === undefined
-  ? '本机没有 DSH 安装（或解析不到 yaml / 内置预设），跳过与上游的对比'
+  ? '本机没有 DSH 安装（或解析不到 yaml / 内置 standard 预设），跳过与上游的对比'
   : false;
 
 /** 预设写在同一台机器上，`!!js` 是上游写法 —— 校验形状时把它当普通标量。 */
 const jsTag = { tag: '!<tag:yaml.org,2002:js>', resolve: (v) => ({ js: v }) };
 const parse = (file) => upstream.YAML.parse(readFileSync(file, 'utf8'), { customTags: [jsTag] });
+
+/** 读内置 standard 的插件行（兼容 0.1.x 数组与 0.2.x 补丁两种形态）。 */
+function standardRows() {
+  const doc = parse(upstream.stdPath);
+  if (upstream.shape === 'list') return doc;
+  const entry = (Array.isArray(doc) ? doc : []).find((e) => Array.isArray(e?.insert));
+  const preset = entry?.insert?.find((r) => Array.isArray(r?.config?.plugins));
+  return preset?.config?.plugins ?? [];
+}
 
 /** 递归取所有行的 id（组内条目也算），用于集合比对。 */
 function rowIds(rows) {
@@ -117,7 +150,7 @@ guarded('预设：两套预设挂的插件不完全相同 —— 别把「挂预
 });
 
 guarded('预设：cyrene-work 的工具行是 standard 的抄本 —— 只允许已知附加项', () => {
-  const stdIds = rowIds(parse(upstream.stdPath));
+  const stdIds = rowIds(standardRows());
   const mineIds = rowIds(parse(presetFile('cyrene-work')));
 
   // 1) 我们**不能少**：少一行就是 DSH 升级后抄本漂移的直接证据
@@ -142,18 +175,15 @@ guarded('预设：cyrene-work 的工具行是 standard 的抄本 —— 只允�
       + '→ 新增了附加行就把 ADDED 一起改掉；不是有意为之就删掉。',
   );
 
-  // 3) 与上游**有意不同**的地方：这三行我们默认 disabled。
+  // 3) 与上游**有意不同**的地方：从 0.4.2 起没有。
   //
-  //    它们依赖 `workflowEngine`，而该服务在某些部署里起不来（实测 DSH 桌面端
-  //    0.2.0-rc.2）：`tool-workflow` / `tool-ralph` 会一直 waiting，激活审计据此
-  //    判定**整条预设加载失败** —— 用户看到的是预设根本不出现。
-  //    取舍：少三个工具 ≪ 整条预设加载失败。
-  //
-  //    这条断言的作用：将来若有人从 standard 重新整段抄一遍，会把 disabled 一起
-  //    丢掉、于是又踩回同一个坑。这里点出来，改的话必须同时改这行。
-  const INTENTIONALLY_DISABLED = ['workflow-worker-thread', 'tool-workflow', 'tool-ralph'];
+  //    0.4.0 时这里默认关过三行（workflow-worker-thread / tool-workflow / tool-ralph）：
+  //    它们依赖的 `workflowEngine` 在某些部署起不来，会让整条预设判失败。0.2.1 的
+  //    standard 已换成 `workflow-ptc`，这三行不复存在 —— 抄本重新对齐后不再需要
+  //    任何额外 disabled。这条断言今后只拦"有人又私自关掉某行"。
+  const INTENTIONALLY_DISABLED = [];
   const mine = parse(presetFile('cyrene-work'));
-  const std = parse(upstream.stdPath);
+  const std = standardRows();
   const disabledOf = (rows) => {
     const out = [];
     const walk = (list) => {
@@ -175,9 +205,8 @@ guarded('预设：cyrene-work 的工具行是 standard 的抄本 —— 只允�
     [...INTENTIONALLY_DISABLED].sort(),
     `cyrene-work 相对 standard 关闭的行不是预期集合。\n`
       + `  实际多关：${newlyDisabled.join(', ') || '(无)'}\n`
-      + `  预期只关：${INTENTIONALLY_DISABLED.join(', ')}\n`
-      + '→ 这三行依赖 workflowEngine，在起不来它的部署上会让**整条预设**判失败。'
-      + '改这个集合就要同时改这条断言。',
+      + `  预期只关：${INTENTIONALLY_DISABLED.join(', ') || '(无)'}\n`
+      + '→ 不是有意为之就把该行的 disabled 删掉；有意的话同时改这条断言。',
   );
 });
 

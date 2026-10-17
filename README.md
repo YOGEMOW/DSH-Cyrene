@@ -207,18 +207,16 @@ node scripts/install.mjs
 | 文件读写 / Shell / 文件检索 | ❌ 不提供 | ✅ `bash` / `pwsh` / `tool-fs` / `tool-fs-search` |
 | 计划 / 目标 / Skills | ❌ 不提供 | ✅ `plan-mode` / `tool-goal` / `tool-skill` |
 | 子代理（含 fork） | ❌ 不提供 | ✅ `tool-subagent` / `tool-subagent-fork` |
-| workflow / ralph | ❌ 不提供 | ⚠️ **默认关闭**（见下） |
+| workflow（PTC） | ❌ 不提供 | ✅ 随 standard 提供（`workflow-ptc` + `tool-workflow`） |
 | 表情包 | ⚠️ 需另装 `dsh-meme` 才生效（见下） | ⚠️ 同上 |
 
-> **为什么 workflow / ralph 默认关着？** 这三行（`workflow-worker-thread`、
-> `tool-workflow`、`tool-ralph`）依赖 `workflowEngine` 服务，而该 worker
-> **在某些部署里起不来**（实测：DSH 桌面端 0.2.0-rc.2）。起不来时它们会一直
-> `waiting for workflowEngine`，激活审计据此判定**整条预设「加载失败」**——
-> 用户看到的是这两个预设里只有对话模式能用，工作模式根本不出现。
+> **工具行是 DSH standard 的抄本。** 0.4.2 起与 DSH 0.2.1-rc.2 的
+> `@deepseek-ai/dsh-web-app/presets/standard.patch.yml` 对齐：workflow 走
+> `workflow-ptc`，`tool-ralph` / `workflow-worker-thread` 已从上游移除；
+> `tool-plugin-manager` / `tool-plugin-market` 上游默认关闭，这里保持一致。
 >
-> 取舍很直接：**少三个工具 ≪ 整条预设加载失败**。所以默认关掉。
-> 想在能跑 workflow 的部署里启用：把 `preset/cyrene-work/agent.cordis.yml` 里
-> 那三行的 `disabled: true` 删掉即可（先确认 `workflowEngine` 在你那儿能起来）。
+> DSH 升级后抄本不会自动变 —— `tests/preset.test.mjs` 的漂移护栏会在 CI 的
+> `drift` job 里比对，缺行 / 多行都会红。
 
 **这就是两套预设的意义**：以前想用角色人设就得放弃干活能力，于是只能"要干活时切回
 原来的工作模式"。现在**「德谬歌工作模式」两者兼得** —— 角色人设整份替换系统提示词，
@@ -265,6 +263,8 @@ node scripts/install.mjs
 - **换数据**：想用自己的世界书，在 `~/.dsh/cyrene-worldbook.json` 里写
   `{"dir": "/你的/目录"}` 覆盖。
 - **关掉它**：同一个文件里写 `{"enabled": false}`。
+- **改完不用重启**：配置文件最多 2 秒生效；数据文件按 mtime + size 签名判断，
+  下一轮就会重新解析（不再等固定 TTL）。
 
 ### 每轮实际注入多少
 
@@ -480,7 +480,7 @@ dsh-cyrene/
 ## 开发与测试
 
 ```bash
-npm test              # 单元测试（当前 74 条）
+npm test              # 全部单元测试
 npm run harness:check # 语法检查：对所有运行时代码做 node --check
 ```
 
@@ -492,7 +492,9 @@ Node ≥ 22 即可。
 本仓库的测试文件顶部早先就写错过这条命令，注意别再改回去。
 
 CI 在 `.github/workflows/test.yml`：`ubuntu-latest` 的 Node 22 / 24 矩阵各跑一遍，
-外加一个 **`windows-latest`** job —— 后者专门补作者本地覆盖不到的那块（见下）。
+外加一个 **`windows-latest`** job（补作者本地覆盖不到的平台差异），以及一个
+**`drift`** job —— 它会装 `@deepseek-ai/dsh-web-app@0.2.1-rc.2` 提供 standard 预设，
+让 `preset.test.mjs` 的抄本漂移护栏真正跑起来（之前本机没装 DSH 时一直是 skip）。
 
 世界书那部分刻意做成**纯函数 + 薄注入层**：`worldbook/{parse,match,assemble}.mjs`
 不碰任何 DSH API，可以直接单测；只有 `worldbook/index.mjs` 与 DSH 交互。
