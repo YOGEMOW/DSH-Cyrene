@@ -39,6 +39,25 @@ const EXTERNAL_STORE = join(HOME, 'dsha-brand-rename.json')
 export const DEFAULT_NICKNAME = '伙伴'
 /** 称呼最长多少字符：太长会撑变形提示词，也更容易被当成指令。 */
 const MAX_LENGTH = 24
+/** 可选配置：关系称呼推动（默认关闭；SillyTavern 的「求婚→老公/老婆」不属于 DSH 日常）。 */
+const RELATIONSHIP_CONFIG = join(HOME, 'cyrene-nickname.json')
+
+/**
+ * 是否开启「关系称呼推进」。
+ * 默认关闭：DSH 是日常聊天/工作工具，不该默认把关系往婚姻/亲密称谓上推。
+ * 开启方式（二选一）：
+ *  - 环境变量 `DSH_CYRENE_RELATIONSHIP_PUSH=1`
+ *  - `<DSH_HOME>/cyrene-nickname.json` 写 `{"relationshipPush": true}`
+ */
+export function relationshipPushEnabled() {
+  if (process.env.DSH_CYRENE_RELATIONSHIP_PUSH === '1') return true
+  try {
+    const raw = JSON.parse(readFileSync(RELATIONSHIP_CONFIG, 'utf8'))
+    return raw !== null && typeof raw === 'object' && raw.relationshipPush === true
+  } catch {
+    return false
+  }
+}
 
 export const inject = ['systemPrompt']
 
@@ -168,16 +187,22 @@ function latestUserText(messages) {
  * @returns 规则文本。
  */
 export function nicknameContext() {
-  return [
+  const lines = [
     '【称呼】',
-    `你现在称呼对方为「${loadNickname()}」。这个称呼会随关系变化：`,
-    '- 对方用**关系称呼**暗示时（例如求婚/婚礼之后叫你「老婆」「老公」「亲爱的」，',
-    '  或者说「是不是该改口了」「那个啦」），把称呼换成**对应的那一个**：',
-    '  他叫你「老婆」，你就叫他「老公」；他叫你「老公」，你就叫他「老婆」。',
-    '  换完当轮就用新称呼，不要再去问「那我该叫你什么」。',
+    `你现在称呼对方为「${loadNickname()}」。`,
     '- 对方**明确**要求改口（「以后叫我 ××」「称呼改成 ××」）时，直接用新称呼。',
-    '- 称呼只在对方愿意的前提下变；对方没往这个方向走，就别自己往关系上推。'
-  ].join('\n')
+    '- 平时保持当前称呼，不要自己往更亲密或关系称谓上推。'
+  ]
+  if (relationshipPushEnabled()) {
+    lines.push(
+      '- 对方用**关系称呼**暗示时（例如求婚/婚礼之后叫你「老婆」「老公」「亲爱的」，',
+      '  或者说「是不是该改口了」「那个啦」），把称呼换成**对应的那一个**：',
+      '  他叫你「老婆」，你就叫他「老公」；他叫你「老公」，你就叫他「老婆」。',
+      '  换完当轮就用新称呼，不要再去问「那我该叫你什么」。',
+      '- 称呼只在对方愿意的前提下变；对方没往这个方向走，就别自己往关系上推。'
+    )
+  }
+  return lines.join('\n')
 }
 
 /**
@@ -255,14 +280,16 @@ export function apply(ctx, config = {}) {
 
   // 写侧 ②：暗示类请求交给模型判断（没有 tools 服务时只读，不影响变量）。
   ctx.inject(['tools'], (scope) => {
+    const relationship = relationshipPushEnabled()
+      ? '或用**关系称呼**暗示关系已经变化（求婚后叫你「老婆」/「老公」，意思是让你反过来叫她/他对应的那个）时使用。'
+      : ''
     scope.tools.register(
       stringTool({
         name: 'set_nickname',
         description:
           '更改你称呼对方的方式。当对方明确要求改口（「以后叫我老师」），'
-          + '用暗示表达希望被换一种称呼（「我们之间还用这么生分吗」），'
-          + '或用**关系称呼**暗示关系已经变化（求婚后叫你「老婆」/「老公」，'
-          + '意思是让你反过来叫她/他对应的那个）时使用。'
+          + '用暗示表达希望被换一种称呼（「我们之间还用这么生分吗」）'
+          + relationship
           + '只在确实要改的时候调用，不要因为一句玩笑就改；改完当轮就用新称呼。',
         parameter: 'name',
         parameterDescription: '新称呼，例如「老师」「小明」',
