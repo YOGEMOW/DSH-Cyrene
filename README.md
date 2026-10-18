@@ -32,8 +32,12 @@
 
 需要 **DSH 0.2.0 及以上**。
 
+> ⚠️ **别用 `dsh plugin add dsh-cyrene`。** npm 上有一个**同名**的 `dsh-cyrene`，是别人的「主题 + Live2D 桌宠」插件——它没有本项目需要的 `./nickname` / `./memory` / `./worldbook` 入口，装上只会得到一个跑不起来的插件。请从仓库以本地 `link:` 方式安装。
+
 ```bash
-dsh plugin --profile <你的 profile> add dsh-cyrene
+git clone https://github.com/YOGEMOW/DSH-Cyrene.git
+dsh plugin --profile <你的 profile> add link:<刚克隆的目录>
+# Windows 例：dsh plugin --profile desktop add link:D:/path/DSH-Cyrene
 ```
 
 装完**重启一次 DSH**。新建对话时，模式选择器里就会出现「昔涟聊天模式」和「德谬歌工作模式」——0.4.0 起预设随插件本体注册，不用再单独贴声明。
