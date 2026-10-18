@@ -1,4 +1,6 @@
 > **This project is an open-source preset plugin for DeepSeek Harness. It does NOT contain any game assets (Live2D models, artwork, audio). The bundled persona text is adapted from the open-source Cyrene-Agent project (MIT, Copyright (c) 2026 Playa). Cyrene (昔涟) and Honkai: Star Rail belong to HoYoverse/miHoYo. This is an unofficial fan tool — non-commercial use only.**
+>
+> 使用前请读 **[风险提醒](#风险提醒)** —— 自定义风格与角色扮演场景都会影响模型输出，且与上游人设存在已知冲突。
 
 ---
 
@@ -8,8 +10,8 @@
 
 | 预设 | 显示名 | 能力 |
 |---|---|---|
-| `preset/chat/` | **昔涟聊天模式** | 整份替换系统提示词，纯以角色人格对话；只保留联网搜索与表情包，**不挂文件 / Shell / 设备工具** |
-| `preset/cyrene-work/` | **德谬歌工作模式** | 同样用角色人设整份替换系统提示词，但**带全套工具**（文件 / Shell / 计划 / 目标 / 子代理 / workflow）；干活时也保持她的身份与说话方式 |
+| `preset/chat/` | **纯文本对话模式** | 整份替换系统提示词，纯以角色人格对话；只保留联网搜索与表情包，**不挂文件 / Shell / 设备工具** |
+| `preset/cyrene-work/` | **昔涟工作模式** | 同样用角色人设整份替换系统提示词，但**带全套工具**（文件 / Shell / 计划 / 目标 / 子代理 / workflow）；干活时也保持她的身份与说话方式 |
 
 两者共享同一份长期记忆（`<DSH_HOME>/cyrene-memory.md`），所以同一个角色在两个模式里的记忆是连续的。
 
@@ -17,9 +19,6 @@
 > 背书或赞助关系。角色 IP 归 HoYoverse / 米哈游所有。随包的人设文本整理自开源项目
 > Cyrene-Agent（MIT，Copyright (c) 2026 Playa）。**使用前请先读
 > [`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md)。**
-
-> 本仓库是 [`Cyrene-xl/DSH-Cyrene`](https://github.com/Cyrene-xl/DSH-Cyrene) 的镜像分支
-> （维护：YOGEMOW），原仓库保留为 git `upstream`，同步方式见「[上游同步](#上游同步)」。
 
 ## 关于随包的人设文本
 
@@ -88,29 +87,37 @@
 
 ### 1. 装插件本体
 
+> ### ⚠️ 别用 `dsh plugin --profile <你的 profile> add dsh-cyrene`
+>
+> npm 上有一个**同名**的 `dsh-cyrene`，那是**别人的**「昔涟主题 + Live2D 桌宠」插件，
+> 它的 `exports` 里只有 `.` 和 `./client` —— **没有**本项目需要的
+> `./nickname` / `./memory` / `./worldbook` / `./style`。
+>
+> 装错之后的现象很有迷惑性：预设能选到，但 `设置 → 内置插件` 里那几行全是
+> `never started`，预设标「加载失败」——**看着像装上了，其实一个都没起来**。
+> 详见下面的[排查](#排查)。
+
+从**仓库**装才装得到本项目（`dsh plugin` 只是 pnpm 的转发，`link:` 指本地目录，不需要联网）：
+
 ```bash
-dsh plugin --profile <你的 profile> add dsh-cyrene
+# 1) 先拿到仓库
+git clone https://github.com/Cyrene-xl/DSH-Cyrene
+#    或者从 Releases 页下载 zip 解压
+
+# 2) 装进「你正在用的那个 profile」
+dsh plugin --profile <你的 profile> add link:/你的路径/DSH-Cyrene
+#    Windows:  link:D:/你的路径/DSH-Cyrene
+
+# 3) 重启 DSH（新加的行要重新组合 profile 才生效）
 ```
 
-`cordis.patch.yml` 的条目都是 `insert` 形式（含预设声明）。插件本体可热挂载；
-预设是否立即出现取决于 DSH 版本 —— 升级后**重启一次**最稳妥。
+`cordis.patch.yml` 是纯 `insert` 形式，不往机器上写任何硬编码路径。
 
-### 2. 预设：0.4.0 起随插件本体注册（不需要这一步）
+### 2. 装预设（必须单独做一步）
 
-0.4.0 起，两套预设的声明已并入插件自带的 `cordis.patch.yml`：装好 / 升级插件后
-**重启 DSH**，新建对话的模式选择器里就会直接出现「昔涟聊天模式」和「德谬歌工作模式」，
-不用再单独装预设，也不用再往 profile 里贴声明。
-
-> 为什么改成这样：DSH 0.2.0 起预设换成**声明式注册表**（注册表不扫描目录），
-> 把声明随包发运是最不容易漏的一步 —— 以前漏装不会报错，只是模式不出现。
->
-> ⚠️ **0.4.0 要求 DSH 0.2.0 及以上。** 还停在 0.1.x 的话请用 0.3.1 的目录安装方式。
-
-<details>
-<summary>旧版本（0.3.x 及更早）的安装方式 —— 仅排障时参考</summary>
-
-**0.1.x：目录安装。** `dsh-agent-presets` 按 `~/.dsh/.agent-presets/<id>/`
-扫描发现预设，所以要把目录拷到位：
+**DSH 没有公开的 agent 预设安装 API**——`dsh-agent-presets` 只按
+`~/.dsh/.agent-presets/<id>/` 目录扫描发现预设，不对外暴露写入接口。
+所以预设必须拷贝到位：
 
 ```bash
 # Linux / macOS
@@ -171,8 +178,6 @@ node scripts/install.mjs
 
 `$DSH_HOME` 环境变量可覆盖默认的 `~/.dsh`。
 
-</details>
-
 ### 3. （可选）换成人设
 
 `prefix:` 里**已经是一份完整可用的昔涟人设**，装完直接就能对话，这一步可以跳过。
@@ -184,8 +189,8 @@ node scripts/install.mjs
 
 **新建对话**时选其中一个模式：
 
-- **「昔涟聊天模式」** —— 只聊天，不挂编码 / Shell / 设备工具
-- **「德谬歌工作模式」** —— 同上人设，但带全套工具，能真正干活
+- **「纯文本对话模式」** —— 只聊天，不挂编码 / Shell / 设备工具
+- **「昔涟工作模式」** —— 同上人设，但带全套工具，能真正干活
 
 > ⚠️ DSH 的规则是**会话一旦说过话，预设就锁死**（服务端报 `agent-preset/locked`）。
 > 所以模式要**在新建对话时就选好**；已经聊过的会话改不了，只能再开一个。
@@ -196,30 +201,33 @@ node scripts/install.mjs
 两套预设的差别**不只是工具多少**，人设正文也取自上游不同的模式组（见
 [`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md)）。逐项对照：
 
-| 能力 | 昔涟聊天模式 | 德谬歌工作模式 |
+| 能力 | 纯文本对话模式 | 昔涟工作模式 |
 |---|---|---|
 | 人设正文 | `chat` 组（含 `soul.md`） | `work` 组（**轻量版**，上游不含 `soul.md`） |
 | 联网搜索 | ✅ `@deepseek-ai/dsh-tool-web`（`fetch: true`） | ✅ 同上 |
 | 长期记忆 | ✅ 本包 `memory.js`：`remember` / `forget` | ✅ 同上，**与对话模式共用同一份文件** |
 | 世界书 | ✅ 本包 `worldbook/`，**数据随包发运**（61 条） | ✅ 同上 |
 | 运行时上下文快照 | ✅ `includeRuntimeContext: true`（世界书依赖它） | ✅ 同上 |
-| 可配置称呼 | ✅ 本包 `nickname.js` 提供 `{{user_nickname}}` | ❌ **未挂** —— 人设正文也没引用它 |
+| 可配置称呼 | ✅ 本包 `nickname.js`：设置里读名字，对话里还能改口 | ❌ **未挂** —— 人设正文也没引用它 |
+| 表达风格档位 | ✅ 本包 `style.js`：五档 + custom，`/style` 切换（按会话） | ❌ **未挂**（上游 work/code 模式不吃风格） |
 | 文件读写 / Shell / 文件检索 | ❌ 不提供 | ✅ `bash` / `pwsh` / `tool-fs` / `tool-fs-search` |
 | 计划 / 目标 / Skills | ❌ 不提供 | ✅ `plan-mode` / `tool-goal` / `tool-skill` |
 | 子代理（含 fork） | ❌ 不提供 | ✅ `tool-subagent` / `tool-subagent-fork` |
-| workflow（PTC） | ❌ 不提供 | ✅ 随 standard 提供（`workflow-ptc` + `tool-workflow`） |
+| workflow / ralph | ❌ 不提供 | ⚠️ **默认关闭**（见下） |
 | 表情包 | ⚠️ 需另装 `dsh-meme` 才生效（见下） | ⚠️ 同上 |
 
-> **工具行是 DSH standard 的抄本。** 0.4.2 起与 DSH 0.2.1-rc.2 的
-> `@deepseek-ai/dsh-web-app/presets/standard.patch.yml` 对齐：workflow 走
-> `workflow-ptc`，`tool-ralph` / `workflow-worker-thread` 已从上游移除；
-> `tool-plugin-manager` / `tool-plugin-market` 上游默认关闭，这里保持一致。
+> **为什么 workflow / ralph 默认关着？** 这三行（`workflow-worker-thread`、
+> `tool-workflow`、`tool-ralph`）依赖 `workflowEngine` 服务，而该 worker
+> **在某些部署里起不来**（实测：DSH 桌面端 0.2.0-rc.2）。起不来时它们会一直
+> `waiting for workflowEngine`，激活审计据此判定**整条预设「加载失败」**——
+> 用户看到的是这两个预设里只有对话模式能用，工作模式根本不出现。
 >
-> DSH 升级后抄本不会自动变 —— `tests/preset.test.mjs` 的漂移护栏会在 CI 的
-> `drift` job 里比对，缺行 / 多行都会红。
+> 取舍很直接：**少三个工具 ≪ 整条预设加载失败**。所以默认关掉。
+> 想在能跑 workflow 的部署里启用：把 `preset/cyrene-work/agent.cordis.yml` 里
+> 那三行的 `disabled: true` 删掉即可（先确认 `workflowEngine` 在你那儿能起来）。
 
 **这就是两套预设的意义**：以前想用角色人设就得放弃干活能力，于是只能"要干活时切回
-原来的工作模式"。现在**「德谬歌工作模式」两者兼得** —— 角色人设整份替换系统提示词，
+原来的工作模式"。现在**「昔涟工作模式」两者兼得** —— 角色人设整份替换系统提示词，
 同时挂着完整工具，并且和对话模式**共享同一份长期记忆**，两边记的事能接上。
 
 代价要说清楚：工作模式用的是上游的**轻量人设**（不含 `soul.md`、台词集也是精简版），
@@ -242,6 +250,29 @@ node scripts/install.mjs
   插件不会另存一份，也不会偷偷回写。
 - **注入上限**：按 2000 字符、按行截断，免得记忆把对话空间吃光。
 
+### 称呼是动态的
+
+`{{user_nickname}}` 每轮装配**现取**，所以改完立刻生效（不用重启、不用新建会话）。三个来源，写的是同一个文件 `<DSH_HOME>/dsha-brand-rename.json`：
+
+| 来源 | 怎么变 |
+| --- | --- |
+| 设置里的自定义名称（昵称插件） | 改完下一轮就生效 |
+| **显式改口**（「以后叫我小明」「称呼改成老师」） | 插件直接解析并落盘，不依赖模型自觉；本轮就用新名字 |
+| **暗示改口**（「我们之间还用这么生分吗」） | 模型判断后调用 `set_nickname` 工具 |
+| **关系称呼**（求婚后：「那是不是得叫那个啦，老婆？」） | 插件每轮注入一条称呼规则：他叫你「老婆」，你就叫他「老公」；模型换完当轮就用新称呼并落盘 |
+
+关于最后一条：`nickname.js` 会注册一段 `cyrene:nickname` 运行时上下文（`order: 120`，
+排在风格与常驻世界书之前），内容就是「当前称呼是 X + 关系称呼要推回对应的那个」。
+光有一个 `{{user_nickname}}` 变量，模型只会一直用那个名字——**它不会自己往关系上推**。
+规则里也写了反面：对方没往这个方向走时，不要自己把关系往前提。
+
+几个刻意的取舍：
+
+- **否定句不解析**：「别再叫我先生」没有给出新名字，交给模型决定是换称呼还是回默认；
+- **问句不解析**：「你叫我什么」不会被当成改口；
+- **插件自己注入的消息不算**：场景/世界书写进去的文本里出现「叫我…」也不会改称呼；
+- 写入是**读-改-写**：那个文件里还有昵称插件自己的字段，不会被冲掉。
+
 ### 两个设计细节
 
 **为什么记忆走模板变量。** 本预设是 `complete: true`，它会把全部 prompt section
@@ -263,8 +294,6 @@ node scripts/install.mjs
 - **换数据**：想用自己的世界书，在 `~/.dsh/cyrene-worldbook.json` 里写
   `{"dir": "/你的/目录"}` 覆盖。
 - **关掉它**：同一个文件里写 `{"enabled": false}`。
-- **改完不用重启**：配置文件最多 2 秒生效；数据文件按 mtime + size 签名判断，
-  下一轮就会重新解析（不再等固定 TTL）。
 
 ### 每轮实际注入多少
 
@@ -291,6 +320,148 @@ node scripts/install.mjs
 | 怎么进去 | 模板变量 `{{cyrene_memory}}` | 运行时上下文快照 |
 | 什么时候变 | 你让她记、或你手改 | 命中变化时 |
 
+## 表达风格
+
+上游的语气不只有一份静态人设：**每档风格 = 一段风格提示词 + 一个温度**。本包的
+`style.js` 把这条绑定接进了 DSH，只挂在**对话模式**（工作模式与上游一致，不吃风格）。
+
+```bash
+/style            # 列出全部档位，并标出当前档
+/style lively     # 元气・活泼（温度 0.90）
+/style healing    # 治愈・安心（0.55）
+/style focused    # 知性・认真（0.40）
+/style sweet      # 撒娇・黏人（0.82）
+/style default    # 回到默认档（★ 不写温度，跟随模型默认）
+/style custom     # 读你自己写的那份风格文件
+```
+
+| 档位 | 风格文件 | 温度 |
+|---|---|---|
+| `default` | `styles/01_default.md` | **不写**（跟随模型默认） |
+| `lively` | `styles/02_lively.md` | 0.90 |
+| `healing` | `styles/03_healing.md` | 0.55 |
+| `focused` | `styles/04_focused.md` | 0.40 |
+| `sweet` | `styles/05_sweet.md` | 0.82 |
+| `custom` | `<DSH_HOME>/cyrene-style-custom.md` | 可选，见下 |
+
+几个要点：
+
+- **按会话生效**：选择存在 `<DSH_HOME>/cyrene-style.json`（最多留 50 条会话记录），
+  换档只影响当前会话。没设置过的会话用 JSON 里的 `default` 字段（等于全局默认）。
+- **风格只改"怎么说"**：注入块外壳与上游逐字一致，明确写着「不得修改角色身份、事实记忆、
+  工具规则、安全约束及硬性行为规则」。它走 `systemPrompt.context()`（请求尾部、每轮重算），
+  `order: 130` 排在常驻世界书（140）之前 —— 与上游的注入顺序一致。
+- **温度只能这么给**：DSH 的预设行**没有** `temperature` 字段，只能通过 `agent/request`
+  瀑布改冻结前的调用配置（DSH 自己的 `dsh-webhook` 用同一手法改 `reasoningEffort`）。
+- **custom 档**：在 `<DSH_HOME>/cyrene-style-custom.md` 里写任何你想要的风格描述，
+  内容会被原样注入（外面仍套那层约束外壳）；想给它一个温度，在 `cyrene-style.json`
+  里加 `"customTemperature": 0.8`（0–2）。显示名也能改：加 `"customLabel": "你的风格名"`
+  （只影响界面与 `/style` 的提示，不参与任何逻辑）。
+  还能标一档**强度**：`"customTier": 2` —— 插件会把「第二档已授权」写进注入块，
+  `1`（默认）则写入「未授权」。这是**硬开关**：由状态决定，不靠模型猜你有没有点头；
+  档位本身的含义由你自己的风格文件定义。
+  ⚠️ **只写"怎么写"**，别在里面写"去做什么"——那已经越过风格的边界，也不是本插件
+  能替你兜住的东西。
+
+## 角色扮演场景
+
+纯文本对话模式**默认是普通聊天**。当你的消息里出现括号、且括号里写了内容（场景、环境、
+动作），本轮就切到**角色扮演场景**：
+
+> （雨夜，屋里只有一盏灯）你还记得这里吗？
+
+- 括号外：你的台词或意图；
+- 括号里：场景与动作；
+- 她的回复会变成「叙述＋对话」——把环境、动作写出来，台词仍然是昔涟的语气。
+
+下一轮**没有括号**了，自动回到普通对话。
+
+### 括号里写的是「你」——当作动作指令
+
+如果括号里用「**你**」描述的是**她要做的动作**，那不是场景，而是给她的动作指令：
+
+> 你：（你亲了我一下）
+> 昔涟：（亲了你一下）……
+
+她会**照做**，并在回复里用括号把做完的动作写出来（动作对象称「你」，不复述你的原句）。
+判据偏保守，避免把问句当动作：
+
+| 括号内容 | 归类 |
+| --- | --- |
+| （你亲了我一下） | ✅ 动作指令 |
+| （你把我抱住） | ✅ 动作指令 |
+| （你在窗边坐下） | ✅ 动作指令 |
+| （你真好） | ➖ 不是动作（没有动作痕迹） |
+| （你还记得吗） | ➖ 不是动作（问句） |
+
+场景和动作可以同时出现，会分别列进指令里：`（雨夜，屋里只有一盏灯）（你把我抱住）`。
+
+### 形态切换（迷迷 / 小昔涟 / 大昔涟）
+
+场景模式里，她会按你的意思换形态 —— **人格内核不变，只变身体与说话的方式**
+（这是世界书「三形态同一性」那条的原话：三个名字，一个存在）。
+
+| 形态 | 样子与说话 |
+| --- | --- |
+| **迷迷** | 孩童模样、记忆精灵；短句、词简单，自称「迷迷」和「我」混用 |
+| **小昔涟** | 少女形态；轻快直白、撒娇多，「人家」更频繁，♪ 自然 |
+| **大昔涟** | 成年、端庄典雅；慢、稳、句子完整，几乎不用「人家」，温柔收着给 |
+
+切换方式：
+
+- **显式**：`（你变成迷迷）`、`切换成大昔涟`、`变回小昔涟`、`恢复原来的样子` ——
+  插件直接解析，本轮就换；
+- **暗示**：`变小一点好不好`、`变回小时候的样子` —— 模型判断后调 `set_form` 工具。
+
+实现上：形态按**会话**存在内存里，注入走 `cyrene:form` 运行时上下文（`order: 125`，
+夹在称呼 120 与风格 130 之间）；**只有设了形态才占上下文**，默认形态一个字都不加。
+重启 DSH 后回到默认形态。
+
+### 怎么判断
+
+- 中文括号 `（）`：括号里 ≥ 2 个字就算（「雨夜」「她笑」都成立）；
+- 半角括号 `()`：括号里 ≥ 6 个字符才算 —— 避免 `print(x)`、`（1）` 这种误触发。
+
+### 一个实现细节（为什么它不会让历史膨胀）
+
+判断走 `agent/pre-step`（本轮消息是它的参数），不走 `systemPrompt.context()` ——
+后者在用户消息落库**之前**就跑完了，看不到你这一轮刚打的字。
+
+而且它是个**状态机**：只在「普通 ↔ 场景」**状态变化**时追加一条标记（「场景模式开启」/
+「回到普通对话」），状态不变时一个字都不加。场景描述本来就在你的消息里，模型看得见，
+不需要每轮抄一遍。
+
+### 关闭
+
+在预设里删掉 `cyrene-scene` 那一行，或者给它加 `config: { enabled: false }`。
+工作模式本来就不挂它（与风格同理：带工具的模式不该被旁白体干扰）。
+
+### 工作模式里**没有**风格（刻意禁用）
+
+风格只挂在**对话模式**；工作模式不挂 —— 与上游一致（work / code 本来就不注入风格）。
+这不是"少做一个功能"，而是一条安全约定：
+
+- 工作模式带 shell / 文件 / 网络这些**真能动东西**的工具。一份带着强烈依恋感的写作风格
+  配上权限，就是"越权操作"的诱因；
+- 所以有**两道保险**：预设层面工作模式不挂这个插件；`style.js` 的
+  `DISABLED_PRESETS` 里也写着 `cyrene-work` —— 万一将来被误挂进去，运行时会读会话的
+  `agent-preset/selected` 事件，自己拒掉（风格文本和温度**都不动**）；
+- 新会话页的风格按钮在工作模式下**不显示**，避免"点了没反应"的假入口。
+
+要改这条约定，得同时改两处并跑测试：`preset/cyrene-work/agent.cordis.yml`（别挂进来）、
+`style.js` 的 `DISABLED_PRESETS`。`tests/preset.test.mjs` 与
+`tests/style.test.mjs` 各有一条断言守着，改错了会红。
+
+### 两条能力边界（不是没做，是做不到）
+
+1. **没有 `top_p`，也没有重复惩罚。** DSH 的 `LlmCallConfig` 只暴露
+   `provider / model / reasoningEffort / temperature / maxTokens / stop`。
+   上游 `BUILT_IN_STYLE_PRESETS` 里那半张表（OpenAI `frequency_penalty`、
+   Qwen `repetition_penalty`）在 DSH 这层**无处可放**，所以没搬。
+2. **`deepseek-flash` 开着思考时，温度可能不生效。** 上游对 DeepSeek 也有同类规则
+   （`requiresReasoningOff: true`）。本项目**不替你改路由**，只在 `/style` 的回复里
+   提示一句；要确定性生效，请自己把该会话的思考模式关掉。
+
 ### 一条必须知道的依赖
 
 世界书走 `systemPrompt.context()`，而这一项会被 `includeRuntimeContext: false`
@@ -311,6 +482,47 @@ node scripts/install.mjs
 - [dsh-universal-worldbook](https://github.com/TritiumWang/dsh-universal-worldbook)
 
 细节见 [`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md) 第 1 节与第 7 节。
+
+## 风险提醒
+
+用之前把这几条看完——它们都对应真实会发生的情况，不是免责话术。
+
+### 1. 自定义风格的内容由你自己负责
+
+`custom` 档会把你写进 `<DSH_HOME>/cyrene-style-custom.md` 的文本**原样注入**提示词。
+本仓库不提供、也不推荐任何激进风格；`customTier`（`1` / `2`）只是一个**中性的强度开关**，
+档位含义由你自己的文件定义。
+
+- 不要把**同人作品原文**整段贴进去当风格：那是别人的文字，版权不属于你，也不属于本项目；
+- 不要在风格文件里写"去执行某个操作"——那已经越过风格的边界；
+- 风格只能影响**措辞**，改不了模型与平台的安全策略。想靠提示词"解禁"是做不到的。
+
+### 2. 与上游人设的冲突是**预期行为**
+
+对话模式的人设逐字来自 Cyrene-Agent，其中 `soul.md` 明确写着「**偏爱不等于占有**」
+「不要自动宣称用户只属于你」，并在"避免生成的伪人格"里点名「**占有式恋人**」。
+
+所以你如果写的是**独占 / 嫉妒 / 压迫感**类的风格，两套指令会在上下文里互相拉扯，
+表现是"时松时紧"——**这不是 bug**。本项目的选择是：不改上游正文，让风格文件自己收敛
+（比如把独占写成"我会记得"而不是"你不许走"）。要更稳只能改人设，而本项目不替你做这件事。
+
+### 3. 角色扮演场景会"照做"
+
+场景模式里，括号内容会被当作**场景描述**或**给你的动作指令**执行。因此：
+
+- 别在括号里写真实世界里的危险要求（如"你去把某某删了"）——她可能真的按人设去理解；
+- 工作模式**不挂**场景与风格插件（代码级禁用，有测试守着），也不建议手动挂过去：
+  带 shell / 文件权限的模式不该被旁白体与写作风格牵着走；
+- 入戏是工具属性，不是关系替代。AI 的输出不具备真实情感或意图，不能替代现实中的
+  社交关系与专业帮助。
+
+### 4. 版权与商用
+
+- 人设文本与世界书数据来自 Cyrene-Agent（MIT）；风格文件来自上游 `prompts/styles/`；
+  角色 IP 归 HoYoverse / 米哈游。**含角色 IP 的衍生物禁止商用**，详见
+  [`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md)；
+- 本仓库**不分发**任何美术资源、表情包、壁纸与同人文本；需要就自己装第三方插件，
+  并遵守对方的许可。
 
 ## 推荐搭配（第三方插件，均不在本仓库内）
 
@@ -363,38 +575,17 @@ dsh plugin --profile <你的 profile> add <插件名>
 
 ## 自定义
 
-0.4.0 起预设是**生成进 bundle 补丁**的：仓库里 `preset/<id>/` 是源，`cordis.patch.yml`
-的预设段由 `node scripts/build-bundle-patch.mjs` 生成。所以改人设有两条路：
+装好之后预设就在 `~/.dsh/.agent-presets/<id>/`（`chat` 或 `cyrene-work`），
+**直接改那两个文件即可**，DSH 会按目录实时发现：
 
-1. **改仓库（推荐，能长期保留）**：编辑 `preset/<id>/agent.cordis.yml`（人设与工具挂载）
-   或 `preset.yml`（模态名称、描述、`order`），然后
+- `preset.yml` —— 模态名称、描述、排序（`order`）
+- `agent.cordis.yml` —— 人设正文与工具挂载
 
-   ```bash
-   node scripts/build-bundle-patch.mjs   # 重新生成 cordis.patch.yml
-   ```
+> 改的是 `~/.dsh/` 下**装好的那一份**；仓库里的 `preset/<id>/` 是发运模板，
+> 它不会自动跟着变。想把改动回灌进仓库，得手动同步过去。
 
-   再升级 / 重装插件并重启 DSH。`npm test` 里有一条 `--check` 断言，忘了重新生成会红。
-
-2. **只在本机临时改**：在 `<DSH_HOME>/profiles/<你的 profile>/cordis.patch.yml` 里按
-   预设条目 id（`preset-chat` / `preset-cyrene-work`）写覆盖，不要改装好的 `node_modules`
-   里的生成文件 —— 下次升级就被覆盖了。
-
-> 0.1.x 的老机制（`~/.dsh/.agent-presets/<id>/` 目录，改完即时生效）只在 0.3.x 及更早
-> 的版本里成立；0.4.0 不再使用它。
-
-## 上游同步
-
-本仓库是 [`Cyrene-xl/DSH-Cyrene`](https://github.com/Cyrene-xl/DSH-Cyrene) 的镜像分支，
-本地 clone 里原仓库被配置成 `upstream`：
-
-```bash
-git remote add upstream https://github.com/Cyrene-xl/DSH-Cyrene.git  # 已有则跳过
-git fetch upstream
-git merge upstream/main        # 或 git rebase upstream/main
-```
-
-冲突主要集中在 `preset/` 与文档；合并后跑一遍 `npm test`，并用
-`node scripts/build-bundle-patch.mjs` 重新生成补丁。
+改完**不用重新安装插件**。但注意：重新跑 `install.sh` 时若检测到内容不同会拒绝覆盖，
+这正是为了防止你的改动被抹掉。
 
 ## 重命名
 
@@ -412,13 +603,15 @@ dsh-cyrene/
 ├── index.js                 宿主半体锚点（刻意不做任何运行时改动）
 ├── memory.js                会话级插件：长期记忆变量 + remember / forget 工具
 ├── nickname.js              会话级插件：称呼变量 {{user_nickname}}
+├── style.js                 会话级插件：表达风格档位（风格提示词 + 温度，按会话）
+├── styles/                  随包发运的五份风格文件（上游原文，01_default … 05_sweet）
 ├── worldbook/
 │   ├── index.mjs            会话级插件：世界书注入（常驻块走 context，命中块走 pre-step）
 │   ├── parse.mjs            解析 Cyrene-Agent 格式的条目（纯函数）
 │   ├── match.mjs            触发词 / 常驻 / 连带匹配（纯函数）
 │   ├── assemble.mjs         组装注入块（纯函数）
 │   └── data/                随包发运的世界书数据（61 条，5 个文件）
-├── cordis.patch.yml         bundle patch：挂插件 + 声明预设（预设段为生成内容）
+├── cordis.patch.yml         bundle patch：把插件挂进 loader
 ├── package.json             含 dsh.bundle.patch 等声明
 ├── plugin.json              DSH 插件清单
 ├── dsh.plugin.json          同上（兼容不同版本的清单名）
@@ -430,10 +623,9 @@ dsh-cyrene/
 │       ├── agent.cordis.yml 工作模式人设 + 标准模式全套工具
 │       └── preset.yml       模态元信息
 ├── scripts/
-│   ├── install.sh           Linux / macOS（0.1.x 目录方式，旧版排障用）
-│   ├── install.mjs          跨平台（Node，Windows 也走这条；同上）
-│   ├── export-preset-declarations.mjs  DSH 0.2.0+ 的声明式预设导出
-│   └── build-bundle-patch.mjs          生成 cordis.patch.yml（插件行 + 预设声明）
+│   ├── install.sh           Linux / macOS
+│   ├── install.mjs          跨平台（Node，Windows 也走这条）
+│   └── export-preset-declarations.mjs  DSH 0.2.0+ 的声明式预设导出
 ├── tests/
 │   ├── worldbook.test.mjs   世界书解析 / 匹配 / 组装 / 注入层的单元测试
 │   ├── memory.test.mjs      记忆的净化 / 限长 / forget 边界 / 注入块包裹
@@ -453,10 +645,15 @@ dsh-cyrene/
 
 ## 排查
 
-**装了插件但模式选择器里没有新选项** —— 先确认 DSH 是 **0.2.0+**、插件版本是 **0.4.0+**，
-然后重启一次。0.4.0 起预设由 bundle 补丁注册；仍不出现时检查
-`<DSH_HOME>/profiles/<你的 profile>/cordis.patch.yml` 有没有把 `preset-chat` /
-`preset-cyrene-work` 覆盖掉（0.3.x 及更早才需要跑 `scripts/install.*` 装目录）。
+**装了插件但模式选择器里没有新选项** —— 预设没装。跑 `scripts/install.*`，
+确认 `~/.dsh/.agent-presets/chat/` 与 `~/.dsh/.agent-presets/cyrene-work/` 下
+确实都有 `agent.cordis.yml` 和 `preset.yml`。
+
+**`设置 → 内置插件` 里出现 `never started`（预设显示「加载失败」）** ——
+预设装上了，但**这个 profile 里没有本项目的包**（最常见的是装成了 npm 上同名的
+别人的包）。按「安装」第 1 步从仓库装一次，再重启。
+自查：`~/.dsh/profiles/<你的 profile>/node_modules/dsh-cyrene` 不存在，或者它
+`package.json` 的 `exports` 里没有 `./worldbook`，就是装错了。
 
 **滑块上少了某一档** —— 新建对话页的滑块只在**空白会话**显示，且会话预设一旦
 锁定（发过消息）就随 Hero 一起消失，这是 DSH 的原生行为。
@@ -473,14 +670,13 @@ dsh-cyrene/
 模式在选择器里看着好好的，发第一条消息才炸，之后每一轮都失败。也正因如此，
 不要照搬上游 Cyrene-Agent 新版 prompts 里的模板变量。
 
-**想彻底卸载** —— 0.4.0 起预设随插件注册，直接
-`dsh plugin --profile <你的 profile> remove dsh-cyrene` 即可；0.3.x 及更早还要
-`scripts/install.sh --uninstall` 清掉 `~/.dsh/.agent-presets/` 里的目录。
+**想彻底卸载** —— `scripts/install.sh --uninstall` 删预设，再
+`dsh plugin --profile <你的 profile> remove dsh-cyrene` 删插件。
 
 ## 开发与测试
 
 ```bash
-npm test              # 全部单元测试
+npm test              # 单元测试（当前 73 条）
 npm run harness:check # 语法检查：对所有运行时代码做 node --check
 ```
 
@@ -492,9 +688,7 @@ Node ≥ 22 即可。
 本仓库的测试文件顶部早先就写错过这条命令，注意别再改回去。
 
 CI 在 `.github/workflows/test.yml`：`ubuntu-latest` 的 Node 22 / 24 矩阵各跑一遍，
-外加一个 **`windows-latest`** job（补作者本地覆盖不到的平台差异），以及一个
-**`drift`** job —— 它会装 `@deepseek-ai/dsh-web-app@0.2.1-rc.2` 提供 standard 预设，
-让 `preset.test.mjs` 的抄本漂移护栏真正跑起来（之前本机没装 DSH 时一直是 skip）。
+外加一个 **`windows-latest`** job —— 后者专门补作者本地覆盖不到的那块（见下）。
 
 世界书那部分刻意做成**纯函数 + 薄注入层**：`worldbook/{parse,match,assemble}.mjs`
 不碰任何 DSH API，可以直接单测；只有 `worldbook/index.mjs` 与 DSH 交互。

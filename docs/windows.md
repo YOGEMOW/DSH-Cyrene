@@ -2,8 +2,8 @@
 
 ## 一句话
 
-**0.4.0 起 Windows 上不需要额外步骤**：装插件本体、重启 DSH 即可，两套预设随
-bundle 补丁注册。下面的 `install.mjs` 只对 0.1.x（目录扫描预设）有意义。
+**Windows 用户走 `node scripts/install.mjs`。** 本仓库没有 Windows 专用脚本 ——
+而且这是**有意的**，不是忘了写。
 
 ---
 
@@ -33,24 +33,23 @@ bundle 补丁注册。下面的 `install.mjs` 只对 0.1.x（目录扫描预设�
 ## 在 Windows 上怎么装
 
 ```powershell
-# 0.2.0 及以上（含 0.4.x）：装插件本体即可，预设随 bundle 注册
-dsh plugin --profile <你的 profile> add dsh-cyrene
+# 1. 装插件本体（在 DSH 的 profile 里）
+#    ⚠️ 别写 `add dsh-cyrene` —— npm 上那个同名包是别人的「主题 + 桌宠」插件，
+#    装了之后本项目要的 ./nickname / ./memory / ./worldbook / ./style 全都解析不到，
+#    表现为设置里那几行 never started、预设标「加载失败」。
+dsh plugin --profile <你的 profile> add link:D:/你的路径/DSH-Cyrene
 
-# 仅 0.1.x 需要：把预设目录拷到 ~/.dsh/.agent-presets/
+# 2. 装预设
 node scripts\install.mjs
 ```
 
-0.4.0 起不需要第 2 步。`install.mjs` 结尾会提示版本差异 —— **DSH 0.2.0 及以上
-不要再依赖拷目录**（0.2.0 起预设改成声明式注册表，目录方式不会生效，而且不报错）。
-详见 README 的安装章节。
+第 2 步之后，`scripts/install.mjs` 会自己告诉你下一步 —— 它结尾会根据你的 DSH 版本
+给出该走哪条路。**DSH 0.2.0 及以上请特别注意那一段提示**：0.2.0 起预设改成声明式
+注册表，拷目录那种方式**不会生效，而且不报错**。详见 README 的安装章节。
 
 ---
 
 ## 已知的坑（六条）
-
-> 这几条主要来自 0.1.x–0.3.x 的「拷贝预设目录」年代，保留作历史与排障参考。
-> 0.4.0+ 装插件本体、重启 DSH 即可，不再需要 `install.mjs`；但其中
-> 「跨平台脚本必须真机验证」的教训仍然适用。
 
 前五条来自真实 Windows 用户反馈，**都只能靠真实 Windows 暴露** —— 开发机上
 `node --check`、`npm test`、人工审查全都看不出来。第六条是 CI 的 `windows-latest`

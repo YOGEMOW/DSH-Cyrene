@@ -149,6 +149,27 @@ guarded('预设：两套预设挂的插件不完全相同 —— 别把「挂预
   assert.ok(!workIds.includes('cyrene-nickname'), 'cyrene-work 不应挂 cyrene-nickname');
 });
 
+guarded('预设：表达风格只挂对话模式 —— 工作模式禁用（安全约定）', () => {
+  // 风格只改"怎么说"，但它确实是往提示词里塞话；工作模式带 shell / 文件 / 网络
+  // 这些真能动东西的工具，一份带着强烈依恋感的写作风格配上权限就是越权的诱因。
+  //
+  // 上游本来也不给 work / code 注入风格（BUILT_IN_STYLE_PRESETS 只在非 task 模式
+  // 生效），所以这里不是"少做了一件"，而是"和上游一致 + 多一道保险"：
+  //   - 预设层面：工作模式不挂这个插件；
+  //   - 运行时保险：style.js 的 DISABLED_PRESETS 里也有 cyrene-work，
+  //     万一将来被误挂进去，运行时也会自己拒掉（见 tests/style.test.mjs）。
+  const chatIds = rowIds(parse(presetFile('chat')));
+  const workIds = rowIds(parse(presetFile('cyrene-work')));
+  assert.ok(chatIds.includes('cyrene-style'), '对话模式应该挂 cyrene-style');
+  assert.ok(
+    !workIds.includes('cyrene-style'),
+    '工作模式不能挂 cyrene-style —— 风格在工作模式里是刻意禁用的',
+  );
+  // 场景开关同理：它是"聊天里的扮演"，工作模式（带工具、面对任务）不该被旁白体干扰。
+  assert.ok(chatIds.includes('cyrene-scene'), '对话模式应该挂 cyrene-scene');
+  assert.ok(!workIds.includes('cyrene-scene'), '工作模式不能挂 cyrene-scene');
+});
+
 guarded('预设：cyrene-work 的工具行是 standard 的抄本 —— 只允许已知附加项', () => {
   const stdIds = rowIds(standardRows());
   const mineIds = rowIds(parse(presetFile('cyrene-work')));

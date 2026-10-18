@@ -4,88 +4,115 @@
 `git log`（每条说明都写得比较长），已知的坑看 [`docs/pitfalls.md`](./docs/pitfalls.md)
 与 [`docs/windows.md`](./docs/windows.md)。
 
-## [0.4.2] — 2026-10-18
+## [0.5.0] — 2026-10-18
 
-### 优化 / 更新
+### 新增
 
-**预设工具行对齐 DSH 0.2.1-rc.2（建议升级）**
+**称呼变成动态的：设置里定，对话里还能改**
 
-- 「德谬歌工作模式」的工具行重新从 `@deepseek-ai/dsh-web-app/presets/standard.patch.yml`
-  同步：补上 `time-context` / `tool-schedule` / `workflow-ptc` / `tool-plugin-manager` /
-  `tool-plugin-market`；移除上游已删的 `workflow-worker-thread` / `tool-ralph` 与
-  两个可选 subagent provider 行。之前的抄本停留在更早的 standard —— **不会报错，
-  只是少挂 / 多挂工具**，现在由 CI 的 `drift` job 每次对照基线检查。
+- 变量 `{{user_nickname}}` 每轮现取（本来就是这样），本次补上两种**对话中改口**：
+  - **显式**：「以后叫我小明」「称呼改成老师」→ `agent/pre-step` 里直接解析并落盘，
+    不依赖模型自觉；本轮装配就用新名字；
+  - **暗示**：「我们之间还用这么生分吗」→ 模型判断后调用 `set_nickname` 工具。
+- 两条入口与「设置里的自定义名称」写**同一个文件**（`<DSH_HOME>/dsha-brand-rename.json`），
+  不会各记一套；写入是读-改-写，不冲掉昵称插件的其它字段。
+- **关系称呼**：求婚/婚礼之后那句「那是不是得叫那个啦，老婆？」会被理解成「你该叫他老公」。
+  `nickname.js` 注册一段 `cyrene:nickname` 运行时上下文（`order: 120`），写清当前称呼、
+  关系称呼要**推回对应的那一个**（老婆 ↔ 老公），并且换完当轮就用、同时落盘。
+  只给变量是推不动的——模型会一直用旧名字。
+- 刻意的取舍：否定句（「别再叫我先生」）与问句（「你叫我什么」）不解析；
+  插件自己注入的消息不算用户输入。
 
-**抄本漂移护栏终于真的在 CI 跑**
+### 测试
 
-- `tests/preset.test.mjs` 原来要从 DSH 安装处解析 `@deepseek-ai/dsh-agent-presets`
-  （0.1.x 的包名），在 0.2.x 上永远 skip。现在按版本解析
-  `dsh-web-app/presets/standard.patch.yml`，并新增 `drift` job 安装
-  `@deepseek-ai/dsh-web-app@0.2.1-rc.2` 做对照。
+- 新增 `tests/nickname.test.mjs`（10 条）：清洗 / 读失败回退 / 读-改-写 /
+  显式解析的正反例 / 变量现取 / pre-step 落盘 / 插件消息不算 / 工具改口。
 
-**世界书配置 / 数据热更新**
+## [0.4.0] — 2026-10-16
 
-- `cyrene-worldbook.json` 改为最多 2 秒重读一次，改 `dir` / `enabled` / `maxActive`
-  不用重启 DSH。
-- 世界书数据改为按文件 mtime + size 签名缓存：改完下一轮立即重新解析，不再等 30 秒 TTL。
-- 配置字段归一化并夹取（`maxActive` 1–50、`scanDepth` 1–5），写错类型不会带崩插件。
+### 新增
 
-**其它**
+**表达风格档位：`style.js` + `/style` 命令**
 
-- `nickname.js` 按 mtime + size 缓存昵称文件，不再每轮装配都读盘。
-- `install.sh` / `install.mjs` 开头加横幅：0.4.0+ 不需要它们，只用于 0.1.x。
-- 移除 `plugin.json` / `dsh.plugin.json` 里 DSH 不读取的 `contributes` 字段，
-  避免误以为它会二次注册预设。
-- `docs/pitfalls.md` 不再写死 DSH 内部行号；`docs/windows.md` 标注 0.1.x–0.3.x 历史背景。
-- 新增测试：`tests/config.test.mjs`（配置归一化 / 目录签名）、`tests/nickname.test.mjs`
-  （昵称清洗）。
-- 文档不再写死测试条数，避免每次加测试都要改多处。
+- 五档 + custom，**每档 = 一段风格提示词 + 一个温度**，对齐上游 Cyrene-Agent 的
+  `prompts/styles/` 与 `BUILT_IN_STYLE_PRESETS`（lively 0.90 / healing 0.55 /
+  focused 0.40 / sweet 0.82；`default` 不设采样）。
+- 风格提示词走 `systemPrompt.context()`（请求尾部、每轮重算、`order: 130`，
+  排在常驻世界书 `140` 之前）；注入外壳与上游 `buildStylePromptBlock()` 逐字一致。
+- 温度走 `agent/request` 瀑布（DSH 的预设行没有 `temperature` 字段）。
+  `default` 档**不写温度**，跟随模型默认。
+- **按会话生效**：状态在 `<DSH_HOME>/cyrene-style.json`（最多留 50 条会话记录），
+  `/style` 查看与切换（`/style lively`、`/style default`、无参列出全部）。
+- `custom` 档读 `<DSH_HOME>/cyrene-style-custom.md`；没写文件时 `/style custom`
+  会报错提示而不是静默不注入。想给它温度就在 JSON 里加 `customTemperature`（0–2）。
 
-## [0.4.1] — 2026-10-18
+- custom 档支持两个可选字段（只影响显示/授权，不参与玩法）：
+  - `customLabel`：改这一档的显示名（如叫成自己的风格名）；
+  - `customTier`：`1`（默认）/ `2` —— **硬开关**。`style.js` 会按它在注入块里写一行
+    授权标记（「第二档已授权」/「未授权」），模型看到的是确定事实，而不是去猜用户
+    有没有点头。档位本身的含义由使用者自己的风格文件定义。
 
-### 变更
+**角色扮演场景开关（`scene.js`）**
 
-**两套预设改名**
+- 纯文本对话模式默认普通聊天；用户这一轮的消息里出现括号、且括号里写了场景/动作
+  （`（雨夜，屋里只有一盏灯）`），本轮切到「叙述＋对话」的场景模式；没有括号了自动切回。
+- 判断走 `agent/pre-step`（`context()` 在用户消息落库前执行，看不到本轮输入）；
+  且是**状态机**，只在状态切换时追加一条标记，不会每轮往历史里堆指令。
+- 中文括号 ≥2 字、半角括号 ≥6 字符才算，避开 `print(x)`、`（1）` 的误触发。
+- 括号里用「你」描述**她的动作**（`（你亲了我一下）`）时，按**动作指令**处理：
+  照做，并在回复里用括号写出动作（`（亲了你一下）`）；与场景描述可同时出现。
+  判据保守：以「你」开头、非问句、且有动作痕迹才算。
+- 只挂对话模式；工作模式不挂（与风格同理）。
+- **形态切换**：场景里按用户意思在「迷迷 / 小昔涟 / 大昔涟」之间换形态。
+  显式说法（`（你变成迷迷）`、`切换成大昔涟`、`恢复原来的样子`）由插件直接解析，
+  暗示（`变小一点好不好`）交给 `set_form` 工具；形态按会话存，注入走
+  `cyrene:form` 上下文（`order: 125`），**只在设了形态时占上下文**。
+  三个形态的写法对应世界书「三形态同一性」：人格不变，只变身体与说话方式。
 
-- 「纯文本对话模式」→ **「昔涟聊天模式」**
-- 「昔涟工作模式」→ **「德谬歌工作模式」**
+### 安全约定
 
-预设 id（`chat` / `cyrene-work`）不变，已加入的会话与配置不受影响，只是模式选择器
-和文档里的显示名变化。插件本体的显示名从「纯文本对话模式」改为「昔涟（Cyrene）」，
-描述同步改成两套预设。
+- 风格**在工作模式里被禁用**：预设层面工作模式不挂该插件；`style.js` 的
+  `DISABLED_PRESETS` 还会在运行时拒绝 `cyrene-work`（读会话的
+  `agent-preset/selected` 事件判断）；新会话页的风格按钮在该模式下不显示。
+  原因：工作模式带 shell / 文件 / 网络权限，写作风格不该影响"能不能动手、动哪只手"。
 
-### 修复 / 维护
+### 已知限制（能力边界，非缺陷）
 
-- `index.js` 的启动日志还在提示去 `~/.dsh/.agent-presets/` 装预设（0.4.0 之前的老机制），
-  改为输出当前版本与两个预设名，并提示 DSH >= 0.2.0 / 重启。
-- 文档同步：`docs/host-side.md`、`docs/windows.md`、`docs/writing-your-preset.md`
-  的安装说明改为「0.4.0+ 装插件本体即注册预设」，旧目录方式标注为 0.3.x 及更早。
-- `scripts/install.mjs` 结尾提示补充 0.4.0+ 不需要本脚本。
-- `cordis.patch.yml` 头部注释澄清：预设声明是启动期注册，升级 / 重装后需重启，
-  不再写"可热挂载、不需要重启"。
-- 测试条数文案 73 → 74。
+- DSH 的 `LlmCallConfig` 只暴露 `temperature / maxTokens / stop`：上游的 `top_p`、
+  OpenAI `frequency_penalty`、Qwen `repetition_penalty` **无处可放**，未移植。
+- `deepseek-flash` 在**思考模式**下温度可能不生效（上游同类规则 `requiresReasoningOff`）。
+  本项目不替你改路由，只在 `/style` 的回复里提示。
 
-## [0.4.0] — 2026-10-18
+### 升级须知
 
-### 变更
+- 对话模式预设多挂了一行 `dsh-cyrene/style`，**需要重装预设**才生效：
+  `node scripts/install.mjs --force`（已存在且内容不同时默认拒绝覆盖）。
+- 从 0.3.0 升级请一并看 0.3.1（行尾修复）与 0.3.2（会话来源修复）两条。
 
-**两套预设改为随插件本体注册（升级后少一步安装）**
+## [0.3.2] — 2026-10-16
 
-- 以前：装完插件还要单独装预设（0.1.x 拷目录 / 0.2.0+ 手动贴声明）。漏了这一步不会报错，
-  只是模式选择器里没有「纯文本对话模式」「昔涟工作模式」。
-- 现在：预设声明并入包自带的 `cordis.patch.yml`，`dsh plugin add dsh-cyrene` 之后
-  重启 DSH，新建对话就能直接选两个模式。原来单独的预设声明 bundle
-  （`dsh-cyrene-presets`）已经合并进来，不用再装。
-- ⚠️ 运行在 DSH 0.2.0 之前？这个版本用不了（声明式预设注册表是 0.2.0 引入的），
-  继续用 0.3.1。
+### 修复
 
-**仓库**：维护者镜像到 `YOGEMOW/DSH-Cyrene`；原仓库 `Cyrene-xl/DSH-Cyrene` 保留为
-`upstream`，方便继续同步上游更新。
+**新版 DSH 上「发消息没反应」（会话格式 v4 拒收消息来源）**
 
-### 维护
+- **现象**：装好之后能选到模式，但**发消息没有任何反应**；没有任何报错指向本插件。
+  旧版本 DSH（如 0.1.5-rc.2）上一切正常 —— 所以自己测是测不出来的。
+- **原因**：世界书的命中块是一条手写的消息描述符，`source.kind` 写的是 v3 的裸
+  `'plugin'`。会话格式 v4 要求「生产者自有」的 kind（`plugin:<插件 id>`），于是整条
+  消息被校验拒掉：
+  `SessionFormatError: format v4 message requires a producer-owned source kind`。
+- **修法**：改为 `kind: 'plugin:dsh-cyrene/worldbook'` —— 这是 harness 自己的迁移器
+  （`producerKind()`）给第三方插件生成的形态，新旧两个版本都接受。
+- **已经装了的怎么办**：更新代码后**完全退出 DSH 再启动**。JS 模块替换必须重启进程
+  才生效，热重载读到的仍是旧代码。
+- ⚠️ 别换成 `runtime-context`：那是 `dsh-agent-loop` 自己持有的 kind，用它会让我们
+  注入的内容被当成它的运行时快照，进而被替换/清除。详见
+  [`docs/pitfalls.md`](./docs/pitfalls.md) 第七节。
 
-- 新增 `scripts/build-bundle-patch.mjs` 生成 `cordis.patch.yml`（预设段是生成内容，
-  改 `preset/` 后要重新生成）；`tests/preset.test.mjs` 增加 `--check` 断言防漂移。
+### 测试
+
+- 单元测试 73 → **74** 条。新增一条守 `source.kind`：必须是 `plugin:<id>`、不能是裸
+  `plugin`、也不能是 `runtime-context`，且注入块不能被当成真实用户语料。
 
 ## [0.3.1] — 2026-10-06
 
@@ -142,3 +169,35 @@
   随包 61 条真数据整份转 CRLF 后仍一致）、`cyrene-work` 的抄本漂移护栏与
   有意关闭集合、声明导出往返比对、可移植性静态断言。
 - `npm test` 与 `npm run harness:check` 在 ubuntu（Node 22/24）与 Windows（Node 22）上都跑。
+
+---
+
+## fork 分支记录（YOGEMOW/DSH-Cyrene）
+
+> 本仓库在 v0.3.1 之上有独立的 0.4.x 文档与对齐工作，随后合并上游 v0.5.0。
+> 上面的历史来自上游；以下是 fork 侧变更摘要。
+
+## [0.5.1] — 2026-10-18
+
+### 同步上游 v0.5.0
+- 世界书会话格式 v4 修复（新版 DSH「发消息没反应」）
+- 表达风格档位（style.js + `/style`，五档 + custom）
+- 角色扮演场景（scene.js，括号场景 / 动作指令 / 三形态）
+- 昵称动态化（显式改口、`set_nickname`、关系称呼）
+- 安装说明改用仓库 link:，警告 npm 同名包
+
+### 保留 fork 改动
+- 预设显示名「昔涟聊天模式」「德谬歌工作模式」
+- 工作模式工具行对齐 DSH 0.2.1-rc.2 standard
+- README 角色口吻版 + README.technical.md 技术全文
+- bundle 补丁生成器与 `--check` 护栏
+
+## [0.4.2] — 2026-10-18
+- 预设工具行对齐 DSH 0.2.1-rc.2；新增 CI drift job 与 tests/config.test.mjs
+- 世界书配置/数据热更新；nickname 按 mtime + size 缓存
+
+## [0.4.1] — 2026-10-18
+- 预设显示名改为「昔涟聊天模式」「德谬歌工作模式」，插件卡片名「昔涟（Cyrene）」
+
+## [0.4.0] — 2026-10-18
+- 预设声明并入 bundle 补丁（装插件即注册）；新增 scripts/build-bundle-patch.mjs 与 --check 护栏
