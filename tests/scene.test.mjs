@@ -196,8 +196,8 @@ test('开关：enabled=false 时完全不动', async () => {
 
 test('形态：显式说法能解析（括号里的动作指令也算）', () => {
   assert.deepEqual(extractFormRequest('（你变成迷迷）'), { id: 'mimi', label: '迷迷' })
-  assert.deepEqual(extractFormRequest('变回萝莉吧'), { id: 'small', label: '萝莉' })
-  assert.deepEqual(extractFormRequest('变回小昔涟吧'), { id: 'small', label: '萝莉' })
+  assert.deepEqual(extractFormRequest('变回萝莉吧'), { id: 'small', label: '小昔涟' })
+  assert.deepEqual(extractFormRequest('变回小昔涟吧'), { id: 'small', label: '小昔涟' })
   assert.deepEqual(extractFormRequest('切换成德谬歌'), { id: 'big', label: '德谬歌' })
   assert.deepEqual(extractFormRequest('切换成大昔涟'), { id: 'big', label: '德谬歌' })
   assert.deepEqual(extractFormRequest('现在你是迷迷了'), { id: 'mimi', label: '迷迷' })
@@ -213,7 +213,7 @@ test('形态：注入块只在有形态时出现，且写明"人格不变"', () 
   assert.equal(formBlock('unknown'), '')
   assert.ok(formBlock('mimi').includes('【当前形态：迷迷】'))
   assert.ok(formBlock('big').includes('【当前形态：德谬歌】'))
-  assert.ok(formBlock('small').includes('【当前形态：萝莉】'))
+  assert.ok(formBlock('small').includes('【当前形态：小昔涟】'))
   assert.ok(formBlock('small').includes('人格内核不变'))
   for (const id of Object.keys(FORMS)) {
     assert.ok(formBlock(id).includes('不要解释「我在切换形态」'))

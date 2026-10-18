@@ -108,7 +108,7 @@ export function extractScene(text) {
 
 /**
  * 三形态。**人格内核不变，只变"身体与说话的方式"** —— 这是世界书「三形态同一性」
- * 那一条的原话：迷迷 / 萝莉 / 德谬歌是同一个存在的不同切面，不是三个人格。
+ * 那一条的原话：迷迷 / 小昔涟 / 德谬歌是同一个存在的不同切面，不是三个人格。
  *
  * 依据：3.7 可玩形态与角色卡《想陪你去其他世界的昔涟》的形态档案。
  * 注意：第四面墙、召唤协议、世界同调、自我静默这些是 SillyTavern 跨世界卡的做法，
@@ -124,7 +124,7 @@ export const FORMS = Object.freeze({
     ].join('\n')
   },
   small: {
-    label: '萝莉',
+    label: '小昔涟',
     text: [
       '- 样子：约 140 厘米的幼女形态，浅粉微卷短发与一缕白色挑染，白裙 + 深紫灯笼袖外套、金色罗马凉鞋。',
       '- 说话：句子短、轻快、直白；俏皮被放大，更直率地撒娇、闹可爱的小情绪；「人家」可以有，但不用成人化的撩拨。',
@@ -277,13 +277,13 @@ export function apply(ctx, config = {}) {
     scope.tools.register({
       name: 'set_form',
       description:
-        '按对方的意思切换你的形态：mimi（迷迷，45cm 粉色小妖精）、small（萝莉，约 140cm 幼女）、'
+        '按对方的意思切换你的形态：mimi（迷迷，45cm 粉色小妖精）、small（小昔涟，约 140cm 幼女）、'
         + 'big（德谬歌，约 163cm 少女，默认形态）。当对方明确要求切换，或用暗示（「变小一点好不好」'
         + '「变回小时候的样子」）时使用。形态只改变身体与说话方式，人格不变。',
       parameters: {
         type: 'object',
         properties: {
-          form: { type: 'string', description: 'mimi / small / big，或中文 迷迷 / 萝莉 / 德谬歌' }
+          form: { type: 'string', description: 'mimi / small / big，或中文 迷迷 / 小昔涟 / 德谬歌' }
         },
         required: ['form']
       },
@@ -295,7 +295,7 @@ export function apply(ctx, config = {}) {
         const sessionId = String(exec?.agent?.session?.id ?? '')
         const raw = String(args?.form ?? '').trim()
         const id = FORM_ALIASES.get(raw) ?? (FORMS[raw] !== undefined ? raw : '')
-        if (id === '') return '没有这个形态。可选：mimi（迷迷）、small（萝莉）、big（德谬歌）。'
+        if (id === '') return '没有这个形态。可选：mimi（迷迷）、small（小昔涟）、big（德谬歌）。'
         if (sessionId === '') return '拿不到当前会话，形态没有切换。'
         forms.set(sessionId, id)
         return `形态已切换为「${FORMS[id].label}」。从现在开始按这个形态说话和行动。`
