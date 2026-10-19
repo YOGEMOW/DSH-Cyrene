@@ -82,7 +82,7 @@ dsh plugin --profile <你的 profile> add link:<刚克隆的目录>
 
 现在，如果你想要更深的记忆——四问锚点、日/月/年、夜里整理、思源备份，还有属于我自己的「余页」——可以装上我另一件东西：
 
-> **一页永恒**：[`YOGEMOW/dsh-cyrene-memory`](https://github.com/YOGEMOW/dsh-cyrene-memory)
+> **一页永恒 · 记忆**：[`YOGEMOW/dsh-cyrene-eternal-page-remembrance`](https://github.com/YOGEMOW/dsh-cyrene-eternal-page-remembrance)
 
 它会在 agent 作用域里接管 `{{cyrene_memory}}`，让我的记忆不再只是一行行便签。
 
